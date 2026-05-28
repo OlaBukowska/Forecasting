@@ -1,1 +1,695 @@
-Dziś jest dzień burgera. Smacznego.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Flow Metrics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --deep-navy: #0a2342;
+    --sea-dark: #0b525b;
+    --sea-mid: #1d3557;
+    --sea-teal: #457b9d;
+    --sea-light: #a8dadc;
+    --foam: #f1faee;
+    --sand: #f4d6cc;
+    --coral: #f79d65;
+    --amber: #f7b267;
+    --p50: #457b9d;
+    --p85: #f7b267;
+    --p96: #f79d65;
+    --dot-fill: #a8dadc;
+    --dot-stroke: #0b525b;
+    --grid: rgba(167, 218, 220, 0.15);
+    --card-bg: rgba(11, 82, 91, 0.06);
+  }
+ 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+ 
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--foam);
+    color: var(--deep-navy);
+    min-height: 100vh;
+  }
+ 
+  .noise-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index: 9999;
+  }
+ 
+  .page-header {
+    background: linear-gradient(135deg, var(--deep-navy) 0%, var(--sea-dark) 50%, var(--sea-teal) 100%);
+    padding: 48px 40px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+ 
+  .page-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(164,218,220,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+ 
+  .page-header::after {
+    content: '';
+    position: absolute;
+    bottom: -60%;
+    left: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(247,178,103,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+ 
+  .header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+ 
+  .header-badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--sea-light);
+    background: rgba(168,218,220,0.1);
+    border: 1px solid rgba(168,218,220,0.2);
+    padding: 6px 14px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+ 
+  .page-header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+ 
+  .page-header p {
+    font-size: 16px;
+    color: var(--sea-light);
+    opacity: 0.85;
+  }
+ 
+  .dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 40px 60px;
+  }
+ 
+  /* KPI Cards */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+    margin-top: -28px;
+    position: relative;
+    z-index: 2;
+  }
+ 
+  .kpi-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 16px rgba(10,35,66,0.06);
+    border: 1px solid rgba(168,218,220,0.25);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+ 
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(10,35,66,0.1);
+  }
+ 
+  .kpi-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sea-teal);
+    margin-bottom: 8px;
+  }
+ 
+  .kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--deep-navy);
+    line-height: 1;
+  }
+ 
+  .kpi-value span {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--sea-teal);
+    margin-left: 4px;
+  }
+ 
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--sea-teal);
+    margin-top: 6px;
+  }
+ 
+  /* Chart Section */
+  .chart-section {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 2px 16px rgba(10,35,66,0.06);
+    border: 1px solid rgba(168,218,220,0.25);
+    margin-bottom: 24px;
+  }
+ 
+  .chart-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+ 
+  .chart-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--deep-navy);
+  }
+ 
+  .chart-subtitle {
+    font-size: 13px;
+    color: var(--sea-teal);
+    margin-top: 4px;
+  }
+ 
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+ 
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--sea-mid);
+  }
+ 
+  .legend-line {
+    width: 24px;
+    height: 3px;
+    border-radius: 2px;
+  }
+ 
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--dot-stroke);
+    background: var(--dot-fill);
+  }
+ 
+  /* SVG Chart */
+  .chart-container {
+    width: 100%;
+    overflow-x: auto;
+  }
+ 
+  .chart-container svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+ 
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--deep-navy);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.6;
+    box-shadow: 0 8px 32px rgba(10,35,66,0.25);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.15s;
+    max-width: 220px;
+  }
+ 
+  .tooltip.visible { opacity: 1; }
+ 
+  .tooltip-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--sea-light);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+ 
+  .tooltip-val {
+    font-weight: 600;
+  }
+ 
+  /* Table */
+  .data-table-wrap {
+    overflow-x: auto;
+    margin-top: 4px;
+  }
+ 
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+ 
+  thead th {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--sea-teal);
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--sea-light);
+    white-space: nowrap;
+  }
+ 
+  tbody td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(168,218,220,0.2);
+    color: var(--deep-navy);
+    white-space: nowrap;
+  }
+ 
+  tbody tr:hover {
+    background: rgba(168,218,220,0.08);
+  }
+ 
+  .sp-badge {
+    display: inline-block;
+    background: var(--card-bg);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--sea-dark);
+  }
+ 
+  /* Bottom grid */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+ 
+  @media (max-width: 768px) {
+    .page-header { padding: 32px 20px; }
+    .page-header h1 { font-size: 26px; }
+    .dashboard { padding: 24px 20px 40px; }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+    .chart-section { padding: 20px; }
+  }
+ 
+  @media (max-width: 480px) {
+    .kpi-row { grid-template-columns: 1fr; }
+  }
+ 
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+ 
+  .kpi-card { animation: fadeUp 0.5s ease both; }
+  .kpi-card:nth-child(2) { animation-delay: 0.07s; }
+  .kpi-card:nth-child(3) { animation-delay: 0.14s; }
+  .kpi-card:nth-child(4) { animation-delay: 0.21s; }
+  .kpi-card:nth-child(5) { animation-delay: 0.28s; }
+ 
+  .chart-section { animation: fadeUp 0.6s ease both; animation-delay: 0.25s; }
+</style>
+</head>
+<body>
+<div class="noise-overlay"></div>
+ 
+<header class="page-header">
+  <div class="header-content">
+    <div class="header-badge">Flow Metrics</div>
+    <h1>Cycle Time Dashboard</h1>
+    <p>Team performance · April–May 2026 · 16 closed stories</p>
+  </div>
+</header>
+ 
+<main class="dashboard" id="dashboard"></main>
+ 
+<div class="tooltip" id="tooltip"></div>
+ 
+<script>
+// ── DATA ──
+const stories = [
+  { id: "247525", closed: "2026-05-26", cycle: 13, lead: 84,  sp: 13, effort: null },
+  { id: "252692", closed: "2026-05-25", cycle: 4,  lead: 12,  sp: 1,  effort: null },
+  { id: "240507", closed: "2026-05-06", cycle: 9,  lead: 175, sp: 2,  effort: 3 },
+  { id: "251676", closed: "2026-05-04", cycle: 7,  lead: 7,   sp: 2,  effort: 1 },
+  { id: "246272", closed: "2026-04-29", cycle: 13, lead: 75,  sp: 3,  effort: 2 },
+  { id: "248993", closed: "2026-04-29", cycle: 16, lead: 40,  sp: 3,  effort: null },
+  { id: "251123", closed: "2026-04-28", cycle: 7,  lead: 8,   sp: null, effort: null },
+  { id: "251179", closed: "2026-04-27", cycle: 4,  lead: 7,   sp: 2,  effort: null },
+  { id: "250452", closed: "2026-04-24", cycle: 7,  lead: 15,  sp: 2,  effort: null },
+  { id: "246388", closed: "2026-04-20", cycle: 13, lead: 63,  sp: 2,  effort: 5 },
+  { id: "246130", closed: "2026-04-14", cycle: 46, lead: 62,  sp: 5,  effort: 5 },
+  { id: "248765", closed: "2026-04-14", cycle: 22, lead: 27,  sp: 5,  effort: null },
+  { id: "248592", closed: "2026-04-10", cycle: 14, lead: 24,  sp: 0,  effort: 2 },
+  { id: "246311", closed: "2026-04-08", cycle: 7,  lead: 53,  sp: 5,  effort: null },
+  { id: "246242", closed: "2026-04-03", cycle: 2,  lead: 50,  sp: 3,  effort: null },
+  { id: "246243", closed: "2026-04-01", cycle: 14, lead: 48,  sp: 5,  effort: null },
+];
+ 
+// ── PERCENTILE CALC ──
+function percentile(arr, p) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+ 
+const cycles = stories.map(s => s.cycle);
+const leads = stories.map(s => s.lead);
+const p50_cycle = percentile(cycles, 50);
+const p85_cycle = percentile(cycles, 85);
+const p96_cycle = percentile(cycles, 96);
+const p50_lead = percentile(leads, 50);
+const p85_lead = percentile(leads, 85);
+const p96_lead = percentile(leads, 96);
+const avg_cycle = (cycles.reduce((a,b)=>a+b,0)/cycles.length);
+const avg_lead = (leads.reduce((a,b)=>a+b,0)/leads.length);
+ 
+// ── BUILD DASHBOARD ──
+const dash = document.getElementById('dashboard');
+ 
+// KPI Cards
+const kpiHTML = `
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">Stories Closed</div>
+    <div class="kpi-value">${stories.length}</div>
+    <div class="kpi-sub">Apr 1 – May 26</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Avg Cycle Time</div>
+    <div class="kpi-value">${avg_cycle.toFixed(1)}<span>days</span></div>
+    <div class="kpi-sub">In-progress → Done</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Avg Lead Time</div>
+    <div class="kpi-value">${avg_lead.toFixed(1)}<span>days</span></div>
+    <div class="kpi-sub">Created → Done</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">85th % Cycle</div>
+    <div class="kpi-value">${p85_cycle.toFixed(1)}<span>days</span></div>
+    <div class="kpi-sub">SLE target line</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Story Points</div>
+    <div class="kpi-value">${stories.filter(s=>s.sp!==null).reduce((a,s)=>a+s.sp,0)}<span>SP</span></div>
+    <div class="kpi-sub">${stories.filter(s=>s.sp!==null).length} stories estimated</div>
+  </div>
+</div>`;
+ 
+// ── SCATTERPLOT ──
+function buildScatter(data, valueKey, title, subtitle, p50, p85, p96) {
+  const W = 1100, H = 420;
+  const pad = { top: 40, right: 30, bottom: 60, left: 60 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+ 
+  const dates = data.map(d => new Date(d.closed).getTime());
+  const minDate = Math.min(...dates);
+  const maxDate = Math.max(...dates);
+  const dateRange = maxDate - minDate || 1;
+ 
+  const vals = data.map(d => d[valueKey]);
+  const maxVal = Math.max(...vals, p96) * 1.12;
+ 
+  const x = (d) => pad.left + ((new Date(d).getTime() - minDate) / dateRange) * cw;
+  const y = (v) => pad.top + ch - (v / maxVal) * ch;
+ 
+  // Grid lines
+  const yTicks = [];
+  const step = maxVal <= 20 ? 5 : maxVal <= 50 ? 10 : 20;
+  for (let i = 0; i <= maxVal; i += step) yTicks.push(i);
+ 
+  let gridLines = yTicks.map(v =>
+    `<line x1="${pad.left}" y1="${y(v)}" x2="${W - pad.right}" y2="${y(v)}" stroke="rgba(168,218,220,0.2)" stroke-width="1"/>`
+    + `<text x="${pad.left - 10}" y="${y(v) + 4}" text-anchor="end" fill="#457b9d" font-size="11" font-family="'Space Mono',monospace">${v}</text>`
+  ).join('');
+ 
+  // Date labels
+  const uniqueMonths = new Set();
+  const dateLabels = [];
+  data.forEach(d => {
+    const dt = new Date(d.closed);
+    const key = dt.getFullYear() + '-' + dt.getMonth();
+    if (!uniqueMonths.has(key)) {
+      uniqueMonths.add(key);
+      const label = dt.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+      dateLabels.push({ x: x(d.closed), label });
+    }
+  });
+  // Also add individual date ticks
+  const dateTicks = data.map(d => {
+    const dt = new Date(d.closed);
+    return {
+      x: x(d.closed),
+      label: dt.getDate() + ' ' + dt.toLocaleDateString('en-GB', { month: 'short' })
+    };
+  });
+  // Deduplicate close dates
+  const seen = new Set();
+  const uniqueDateTicks = dateTicks.filter(t => {
+    if (seen.has(t.label)) return false;
+    seen.add(t.label);
+    return true;
+  });
+ 
+  let dateTicksHTML = uniqueDateTicks.map(t =>
+    `<text x="${t.x}" y="${H - pad.bottom + 24}" text-anchor="middle" fill="#457b9d" font-size="10" font-family="'Space Mono',monospace" transform="rotate(-35 ${t.x} ${H - pad.bottom + 24})">${t.label}</text>`
+  ).join('');
+ 
+  // Percentile lines
+  const pLine = (val, color, label, dash) => {
+    const yy = y(val);
+    if (yy < pad.top) return '';
+    return `
+      <line x1="${pad.left}" y1="${yy}" x2="${W - pad.right}" y2="${yy}" stroke="${color}" stroke-width="2" stroke-dasharray="${dash}" opacity="0.9"/>
+      <rect x="${W - pad.right + 4}" y="${yy - 10}" width="${label.length * 7 + 16}" height="20" rx="4" fill="${color}" opacity="0.15"/>
+      <text x="${W - pad.right + 12}" y="${yy + 4}" fill="${color}" font-size="11" font-weight="600" font-family="'Space Mono',monospace">${label}</text>
+    `;
+  };
+ 
+  const percentilesHTML =
+    pLine(p50, '#457b9d', `P50: ${p50.toFixed(1)}d`, '8 4') +
+    pLine(p85, '#f7b267', `P85: ${p85.toFixed(1)}d`, '6 3') +
+    pLine(p96, '#f79d65', `P96: ${p96.toFixed(1)}d`, '3 3');
+ 
+  // Dots
+  const dots = data.map((d, i) => {
+    const cx = x(d.closed);
+    const cy = y(d[valueKey]);
+    const sp = d.sp !== null ? d.sp : '–';
+    const r = d.sp !== null ? Math.max(6, Math.min(16, 4 + d.sp * 1.2)) : 7;
+    return `<circle
+      class="dot"
+      cx="${cx}" cy="${cy}" r="${r}"
+      fill="#a8dadc" fill-opacity="0.7"
+      stroke="#0b525b" stroke-width="2"
+      data-id="${d.id}"
+      data-closed="${d.closed}"
+      data-val="${d[valueKey]}"
+      data-sp="${sp}"
+      data-lead="${d.lead}"
+      data-cycle="${d.cycle}"
+      style="cursor:pointer; transition: r 0.15s, fill-opacity 0.15s;"
+    />`;
+  }).join('');
+ 
+  return `
+  <svg viewBox="0 0 ${W + 100} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <!-- axis lines -->
+    <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${H - pad.bottom}" stroke="#a8dadc" stroke-width="1.5"/>
+    <line x1="${pad.left}" y1="${H - pad.bottom}" x2="${W - pad.right}" y2="${H - pad.bottom}" stroke="#a8dadc" stroke-width="1.5"/>
+    ${gridLines}
+    ${dateTicksHTML}
+    ${percentilesHTML}
+    ${dots}
+    <!-- Y axis label -->
+    <text x="${14}" y="${pad.top + ch/2}" text-anchor="middle" fill="#457b9d" font-size="11" font-family="'Space Mono',monospace" letter-spacing="1" transform="rotate(-90 14 ${pad.top + ch/2})">DAYS</text>
+  </svg>`;
+}
+ 
+// Cycle Time Scatter
+const cycleScatterHTML = `
+<div class="chart-section">
+  <div class="chart-title-row">
+    <div>
+      <div class="chart-title">Cycle Time Scatterplot</div>
+      <div class="chart-subtitle">Each dot = 1 story · dot size = story points · hover for details</div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot"></div> Story</div>
+      <div class="legend-item"><div class="legend-line" style="background:#457b9d; opacity:0.7;"></div> 50th %</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f7b267;"></div> 85th %</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f79d65;"></div> 96th %</div>
+    </div>
+  </div>
+  <div class="chart-container">
+    ${buildScatter(stories, 'cycle', 'Cycle Time', 'In-progress → Done', p50_cycle, p85_cycle, p96_cycle)}
+  </div>
+</div>`;
+ 
+// Lead Time Scatter
+const leadScatterHTML = `
+<div class="chart-section">
+  <div class="chart-title-row">
+    <div>
+      <div class="chart-title">Lead Time Scatterplot</div>
+      <div class="chart-subtitle">Each dot = 1 story · dot size = story points · hover for details</div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot"></div> Story</div>
+      <div class="legend-item"><div class="legend-line" style="background:#457b9d; opacity:0.7;"></div> 50th %</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f7b267;"></div> 85th %</div>
+      <div class="legend-item"><div class="legend-line" style="background:#f79d65;"></div> 96th %</div>
+    </div>
+  </div>
+  <div class="chart-container">
+    ${buildScatter(stories, 'lead', 'Lead Time', 'Created → Done', p50_lead, p85_lead, p96_lead)}
+  </div>
+</div>`;
+ 
+// Percentile Summary Cards
+const percentileSummary = `
+<div class="bottom-grid">
+  <div class="chart-section">
+    <div class="chart-title" style="margin-bottom: 20px;">Cycle Time Percentiles</div>
+    <table>
+      <thead><tr><th>Percentile</th><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span style="color:#457b9d;font-weight:700;">50th</span></td><td><strong>${p50_cycle.toFixed(1)} days</strong></td><td>Half of stories finish within this</td></tr>
+        <tr><td><span style="color:#f7b267;font-weight:700;">85th</span></td><td><strong>${p85_cycle.toFixed(1)} days</strong></td><td>SLE – most stories finish within this</td></tr>
+        <tr><td><span style="color:#f79d65;font-weight:700;">96th</span></td><td><strong>${p96_cycle.toFixed(1)} days</strong></td><td>Nearly all stories finish within this</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="chart-section">
+    <div class="chart-title" style="margin-bottom: 20px;">Lead Time Percentiles</div>
+    <table>
+      <thead><tr><th>Percentile</th><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span style="color:#457b9d;font-weight:700;">50th</span></td><td><strong>${p50_lead.toFixed(1)} days</strong></td><td>Half of stories delivered within this</td></tr>
+        <tr><td><span style="color:#f7b267;font-weight:700;">85th</span></td><td><strong>${p85_lead.toFixed(1)} days</strong></td><td>SLE – most stories delivered within this</td></tr>
+        <tr><td><span style="color:#f79d65;font-weight:700;">96th</span></td><td><strong>${p96_lead.toFixed(1)} days</strong></td><td>Nearly all stories delivered within this</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>`;
+ 
+// Data Table
+const tableRows = stories.map(s => {
+  const dt = new Date(s.closed);
+  const dateStr = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const sp = s.sp !== null ? `<span class="sp-badge">${s.sp}</span>` : '–';
+  const eff = s.effort !== null ? s.effort : '–';
+ 
+  // Color code cycle time
+  let cycleColor = '#0b525b';
+  if (s.cycle > p96_cycle) cycleColor = '#d64c1b';
+  else if (s.cycle > p85_cycle) cycleColor = '#f79d65';
+  else if (s.cycle > p50_cycle) cycleColor = '#f7b267';
+ 
+  return `<tr>
+    <td style="font-family:'Space Mono',monospace; font-size:11px;">${s.id}</td>
+    <td>${dateStr}</td>
+    <td style="font-weight:600; color:${cycleColor};">${s.cycle}d</td>
+    <td>${s.lead}d</td>
+    <td>${sp}</td>
+    <td>${eff}</td>
+  </tr>`;
+}).join('');
+ 
+const tableHTML = `
+<div class="chart-section" style="margin-top: 24px;">
+  <div class="chart-title" style="margin-bottom: 16px;">All Closed Stories</div>
+  <div class="data-table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Closed</th><th>Cycle Time</th><th>Lead Time</th><th>Story Pts</th><th>Effort</th></tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+  </div>
+</div>`;
+ 
+// Footer
+const footerHTML = `
+<div style="text-align:center; margin-top:40px; padding:20px; font-size:12px; color:#457b9d; font-family:'Space Mono',monospace; letter-spacing:0.5px;">
+  Generated ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · Data: 16 closed user stories · Apr–May 2026
+</div>`;
+ 
+// Assemble
+dash.innerHTML = kpiHTML + cycleScatterHTML + leadScatterHTML + percentileSummary + tableHTML + footerHTML;
+ 
+// ── TOOLTIP INTERACTIVITY ──
+const tooltip = document.getElementById('tooltip');
+document.querySelectorAll('.dot').forEach(dot => {
+  dot.addEventListener('mouseenter', (e) => {
+    const d = e.target.dataset;
+    const dt = new Date(d.closed);
+    const dateStr = dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    tooltip.innerHTML = `
+      <div class="tooltip-id">ID ${d.id}</div>
+      <div>Closed: <span class="tooltip-val">${dateStr}</span></div>
+      <div>Cycle: <span class="tooltip-val">${d.cycle} days</span></div>
+      <div>Lead: <span class="tooltip-val">${d.lead} days</span></div>
+      <div>Story Pts: <span class="tooltip-val">${d.sp}</span></div>
+    `;
+    tooltip.classList.add('visible');
+    e.target.setAttribute('fill-opacity', '1');
+    e.target.setAttribute('r', parseFloat(e.target.getAttribute('r')) + 3);
+  });
+  dot.addEventListener('mousemove', (e) => {
+    tooltip.style.left = (e.clientX + 16) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+  });
+  dot.addEventListener('mouseleave', (e) => {
+    tooltip.classList.remove('visible');
+    e.target.setAttribute('fill-opacity', '0.7');
+    e.target.setAttribute('r', parseFloat(e.target.getAttribute('r')) - 3);
+  });
+});
+</script>
+</body>
+</html>
