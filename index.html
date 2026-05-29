@@ -113,6 +113,31 @@
   .kpi-card:nth-child(2){animation-delay:.06s;}.kpi-card:nth-child(3){animation-delay:.12s;}
   .kpi-card:nth-child(4){animation-delay:.18s;}.kpi-card:nth-child(5){animation-delay:.24s;}
   .card{animation:fadeUp .5s ease both;animation-delay:.15s;}
+
+  /* Signal color coding */
+  .sig-swatch{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1.5px solid rgba(0,0,0,0.15);}
+  .sig-s1{background:#ee7766;}
+  .sig-s2{background:#f7a440;}
+  .sig-s3{background:#fcca83;}
+  .sig-s4{background:#6dbf8a;}
+  .sig-none{background:#4dbdc6;}
+
+  .color-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;padding:7px 14px;border:1.5px solid var(--sea-tint);border-radius:20px;background:#fff;transition:all .15s;user-select:none;}
+  .color-toggle:hover{border-color:var(--sea-clear);}
+  .color-toggle.on{background:rgba(77,189,198,0.08);border-color:var(--sea-clear);color:var(--teal);}
+  .toggle-dot{width:10px;height:10px;border-radius:50%;background:var(--sea-tint);transition:background .15s;}
+  .color-toggle.on .toggle-dot{background:var(--sea-clear);}
+
+  .sig-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:16px;}
+  .sig-card{border-radius:8px;padding:14px 16px;border-left:4px solid;background:rgba(255,255,255,0.7);}
+  .sig-card-1{border-left-color:#ee7766;background:rgba(238,119,102,0.06);}
+  .sig-card-2{border-left-color:#f7a440;background:rgba(247,164,64,0.06);}
+  .sig-card-3{border-left-color:#fcca83;background:rgba(252,202,131,0.06);}
+  .sig-card-4{border-left-color:#6dbf8a;background:rgba(109,191,138,0.06);}
+  .sig-card-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sea-faded);margin-bottom:4px;}
+  .sig-card-count{font-size:24px;font-weight:800;color:var(--ocean);}
+  .sig-card-desc{font-size:11px;color:var(--sea-faded);margin-top:2px;}
+
 </style>
 </head>
 <body>
@@ -191,13 +216,39 @@
         </div>
       </div>
       <div class="xmr-kpi-row" id="xmrKpis"></div>
-      <div class="xmr-section-title">X Chart — Individual Values</div>
+
+      <!-- X Chart header with toggle -->
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
+        <div class="xmr-section-title" style="margin-bottom:0;">X Chart — Individual Values</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:var(--sea-faded);">Colour coding:</span>
+          <button class="color-toggle on" id="colorToggle" onclick="toggleColors()">
+            <span class="toggle-dot"></span> Signal colours ON
+          </button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" id="colorLegend">
+            <span style="font-size:11px;font-weight:600;color:var(--sea-faded);"><span class="sig-swatch sig-s1"></span>S1 Above/below limit</span>
+            <span style="font-size:11px;font-weight:600;color:var(--sea-faded);"><span class="sig-swatch sig-s2"></span>S2 2/3 outer</span>
+            <span style="font-size:11px;font-weight:600;color:var(--sea-faded);"><span class="sig-swatch sig-s3"></span>S3 3/5 outer</span>
+            <span style="font-size:11px;font-weight:600;color:var(--sea-faded);"><span class="sig-swatch sig-s4"></span>S4 Run of 8</span>
+          </div>
+        </div>
+      </div>
       <div class="chart-wrap" id="chartX"></div>
+
       <div class="xmr-divider"></div>
       <div class="xmr-section-title">MR Chart — Moving Range</div>
       <div class="chart-wrap" id="chartMR"></div>
-      <div style="margin-top:18px;">
-        <table><thead><tr><th>Signal</th><th>Story ID</th><th>Cycle Time</th><th>Detail</th></tr></thead><tbody id="signalBody"></tbody></table>
+
+      <!-- Signal summary -->
+      <div style="margin-top:20px;">
+        <div style="font-size:13px;font-weight:700;color:var(--ocean);margin-bottom:12px;">Signal Summary</div>
+        <div class="sig-summary-grid" id="sigSummaryGrid"></div>
+      </div>
+
+      <!-- Signal detail table -->
+      <div style="margin-top:16px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sea-faded);margin-bottom:8px;">Signal Detail</div>
+        <table><thead><tr><th>Signal Type</th><th>Story ID</th><th>Cycle Time</th><th>Date</th><th>Description</th></tr></thead><tbody id="signalBody"></tbody></table>
       </div>
     </div>
   </div>
@@ -321,6 +372,18 @@ function buildScatter(data,p50,p85,p96){
 }
 
 // ── XMR CHART ──
+let showSignalColors = true;
+function toggleColors(){
+  showSignalColors=!showSignalColors;
+  const btn=document.getElementById('colorToggle');
+  const leg=document.getElementById('colorLegend');
+  btn.className='color-toggle'+(showSignalColors?' on':'');
+  btn.innerHTML=`<span class="toggle-dot"></span> Signal colours ${showSignalColors?'ON':'OFF'}`;
+  leg.style.opacity=showSignalColors?'1':'0.3';
+  renderXMR(lastXMR);
+}
+let lastXMR=null;
+
 function median(arr){
   if(!arr.length)return 0;
   const s=[...arr].sort((a,b)=>a-b);
@@ -328,8 +391,63 @@ function median(arr){
   return s.length%2===0?(s[mid-1]+s[mid])/2:s[mid];
 }
 
+// Signal levels: 0=none, 1=S4(green/run8), 2=S3(yellow/3of5), 3=S2(orange/2of3), 4=S1(red/limit)
+// Higher = more severe. A point keeps highest level.
+function detectSignalLevels(vals, medX, UNPL, LNPL){
+  const n=vals.length;
+  const uDist=UNPL-medX;
+  const lDist=medX-LNPL;
+  const u1=medX+(1/3)*uDist, u2=medX+(2/3)*uDist;
+  const l1=medX-(1/3)*lDist, l2=medX-(2/3)*lDist;
+
+  const lvl=new Array(n).fill(0);
+
+  // S1: beyond limits
+  for(let i=0;i<n;i++) if(vals[i]>UNPL||vals[i]<LNPL) lvl[i]=4;
+
+  // S4: 8 consecutive same side of median
+  if(n>=8){
+    for(let i=7;i<n;i++){
+      const w=vals.slice(i-7,i+1);
+      if(w.every(v=>v>medX)||w.every(v=>v<medX))
+        for(let j=i-7;j<=i;j++) lvl[j]=Math.max(lvl[j],1);
+    }
+  }
+
+  // S3: 3 of 5 consecutive beyond 1/3 zone (upper OR lower, same side)
+  if(n>=5){
+    for(let i=4;i<n;i++){
+      const w=vals.slice(i-4,i+1);
+      const cu=w.filter(v=>v>u1).length;
+      const cl=w.filter(v=>v<l1).length;
+      if(cu>=3||cl>=3) for(let j=i-4;j<=i;j++) lvl[j]=Math.max(lvl[j],2);
+    }
+  }
+
+  // S2: 2 of 3 consecutive in outer 2/3 zone (upper OR lower, same side)
+  if(n>=3){
+    for(let i=2;i<n;i++){
+      const w=vals.slice(i-2,i+1);
+      const cu=w.filter(v=>v>u2).length;
+      const cl=w.filter(v=>v<l2).length;
+      if(cu>=2||cl>=2) for(let j=i-2;j<=i;j++) lvl[j]=Math.max(lvl[j],3);
+    }
+  }
+
+  return {lvl,u1,u2,l1,l2};
+}
+
+const SIG_FILL  ={0:'#4dbdc6', 1:'#6dbf8a', 2:'#fcca83', 3:'#f7a440', 4:'#ee7766'};
+const SIG_STROKE={0:'#0b707d', 1:'#3a9a5c', 2:'#c76f37', 3:'#c76f37', 4:'#c43020'};
+const SIG_LABEL ={1:'S4 — Run of 8', 2:'S3 — 3/5 outer third', 3:'S2 — 2/3 outer zone', 4:'S1 — Beyond limit'};
+const SIG_DESC  ={
+  1:'8+ consecutive values on same side of median',
+  2:'3 of 5 consecutive beyond 1/3 zone from median',
+  3:'2 of 3 consecutive in outer 2/3 zone',
+  4:'Point beyond UNPL or LNPL'
+};
+
 function calcXMR(data){
-  // sort oldest first
   const sorted=[...data].sort((a,b)=>new Date(a.closed)-new Date(b.closed));
   const vals=sorted.map(s=>s.cycle);
   const ids=sorted.map(s=>s.id);
@@ -338,33 +456,35 @@ function calcXMR(data){
   if(n<2)return null;
 
   const medX=median(vals);
-
-  // Moving ranges
   const mr=[];
   for(let i=1;i<n;i++) mr.push(Math.abs(vals[i]-vals[i-1]));
   const medMR=median(mr);
 
   const UNPL=medX+2.66*medMR;
   const LNPL=Math.max(0,medX-2.66*medMR);
-  const URL_MR=3.267*medMR; // D4 for n=2
+  const URL_MR=3.267*medMR;
 
-  // Detect signals: points outside limits
-  const signals=[];
+  const {lvl,u1,u2,l1,l2}=detectSignalLevels(vals,medX,UNPL,LNPL);
+
+  // Build signal detail list (highest-severity per point, deduplicated)
+  const signalDetail=[];
   vals.forEach((v,i)=>{
-    if(v>UNPL) signals.push({idx:i,id:ids[i],val:v,type:'Above UNPL',date:dates[i]});
-    else if(v<LNPL) signals.push({idx:i,id:ids[i],val:v,type:'Below LNPL',date:dates[i]});
+    if(lvl[i]>0) signalDetail.push({idx:i,id:ids[i],val:v,level:lvl[i],date:dates[i]});
   });
 
-  return {vals,mr,ids,dates,medX,medMR,UNPL,LNPL,URL_MR,signals,n};
+  // Count per level
+  const counts={1:0,2:0,3:0,4:0};
+  lvl.forEach(l=>{if(l>0)counts[l]++;});
+
+  return {vals,mr,ids,dates,medX,medMR,UNPL,LNPL,URL_MR,lvl,u1,u2,l1,l2,signalDetail,counts,n};
 }
 
 function buildXChart(xmr){
   if(!xmr)return '<div style="padding:40px;text-align:center;color:var(--sea-faded);">Potrzeba min. 2 punktów danych</div>';
-  const {vals,ids,dates,medX,UNPL,LNPL,signals,n}=xmr;
-  const W=1100,H=320,pad={top:32,right:26,bottom:52,left:52};
+  const {vals,ids,dates,medX,UNPL,LNPL,u1,u2,l1,l2,lvl,n}=xmr;
+  const W=1100,H=360,pad={top:32,right:26,bottom:52,left:52};
   const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
-  const maxV=Math.max(...vals,UNPL)*1.12;
-  const minV=0;
+  const maxV=Math.max(...vals,UNPL)*1.12, minV=0;
 
   const xPos=i=>pad.left+(i/(n-1||1))*cw;
   const yPos=v=>pad.top+ch-((v-minV)/(maxV-minV))*ch;
@@ -373,55 +493,75 @@ function buildXChart(xmr){
   const step=maxV<=20?5:maxV<=50?10:20;
   let grid='';
   for(let v=0;v<=maxV;v+=step){
-    grid+=`<line x1="${pad.left}" y1="${yPos(v)}" x2="${W-pad.right}" y2="${yPos(v)}" stroke="rgba(76,119,139,0.1)"/>`;
+    grid+=`<line x1="${pad.left}" y1="${yPos(v)}" x2="${W-pad.right}" y2="${yPos(v)}" stroke="rgba(76,119,139,0.08)"/>`;
     grid+=`<text x="${pad.left-8}" y="${yPos(v)+4}" text-anchor="end" fill="#4c778b" font-size="10" font-weight="600">${v}</text>`;
   }
 
-  // X labels
+  // X axis labels
   let xLabels='';
-  const maxLabels=Math.min(n,20);
-  const labelStep=Math.max(1,Math.floor(n/maxLabels));
+  const labelStep=Math.max(1,Math.floor(n/Math.min(n,18)));
   for(let i=0;i<n;i+=labelStep){
     const dt=new Date(dates[i]);
     const l=dt.getDate()+'/'+String(dt.getMonth()+1).padStart(2,'0');
     xLabels+=`<text x="${xPos(i)}" y="${H-pad.bottom+18}" text-anchor="middle" fill="#4c778b" font-size="9" font-weight="600">${l}</text>`;
   }
 
+  // Zone shading bands (subtle)
+  function zoneBand(yTop,yBot,color,opacity){
+    if(yTop>H-pad.bottom||yBot<pad.top)return '';
+    const yt=Math.max(yTop,pad.top), yb=Math.min(yBot,H-pad.bottom);
+    return `<rect x="${pad.left}" y="${yt}" width="${cw}" height="${yb-yt}" fill="${color}" opacity="${opacity}"/>`;
+  }
+  // outer zone (2/3 to limit): coral tint
+  const zones=(yPos(u2)>pad.top?zoneBand(yPos(UNPL),yPos(u2),'#ee7766',0.06):'')
+    +(yPos(l2)<H-pad.bottom?zoneBand(yPos(l2),yPos(LNPL>0?LNPL:0),'#ee7766',0.06):'')
+    // middle zone (1/3 to 2/3): honey tint
+    +(zoneBand(yPos(u2),yPos(u1),'#fcca83',0.05))
+    +(yPos(l1)<H-pad.bottom?zoneBand(yPos(l1),yPos(l2),'#fcca83',0.05):'');
+
   // Control lines
-  function cLine(val,color,label,da){
+  function cLine(val,color,label,da,sw=2){
     const yy=yPos(val);if(yy<pad.top-10||yy>H-pad.bottom+10)return '';
     const tw=label.length*6+16;
-    return `<line x1="${pad.left}" y1="${yy}" x2="${W-pad.right}" y2="${yy}" stroke="${color}" stroke-width="2" stroke-dasharray="${da}" opacity=".8"/>
-      <rect x="${W-pad.right+4}" y="${yy-11}" width="${tw}" height="22" rx="4" fill="${color}" opacity=".12"/>
+    return `<line x1="${pad.left}" y1="${yy}" x2="${W-pad.right}" y2="${yy}" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${da}" opacity=".85"/>
+      <rect x="${W-pad.right+4}" y="${yy-10}" width="${tw}" height="20" rx="3" fill="${color}" opacity=".12"/>
       <text x="${W-pad.right+12}" y="${yy+4}" fill="${color}" font-size="10" font-weight="700">${label}</text>`;
   }
-  const cLines=cLine(medX,'#0b707d',`X̃: ${medX.toFixed(1)}`,'')
-    +cLine(UNPL,'#ee7766',`UNPL: ${UNPL.toFixed(1)}`,'6 3')
-    +(LNPL>0?cLine(LNPL,'#ee7766',`LNPL: ${LNPL.toFixed(1)}`,'6 3'):'');
+  const cLines=
+    cLine(medX,'#0b707d',`X̃: ${medX.toFixed(1)}`,'',2)
+    +cLine(UNPL,'#ee7766',`UNPL: ${UNPL.toFixed(1)}`,'6 3',2)
+    +(LNPL>0?cLine(LNPL,'#ee7766',`LNPL: ${LNPL.toFixed(1)}`,'6 3',2):'')
+    +cLine(u2,'#f7a440',`2/3: ${u2.toFixed(1)}`,'4 3',1)
+    +(l2>0?cLine(l2,'#f7a440',`2/3: ${l2.toFixed(1)}`,'4 3',1):'')
+    +cLine(u1,'#fcca83',`1/3: ${u1.toFixed(1)}`,'3 3',1)
+    +(l1>0?cLine(l1,'#fcca83',`1/3: ${l1.toFixed(1)}`,'3 3',1):'');
 
-  // Line path
+  // Connecting line
   let path='';
   vals.forEach((v,i)=>{path+=(i===0?'M':'L')+` ${xPos(i)} ${yPos(v)} `;});
-  const lineSVG=`<path d="${path}" fill="none" stroke="#4c778b" stroke-width="1.5" opacity=".4"/>`;
+  const lineSVG=`<path d="${path}" fill="none" stroke="#4c778b" stroke-width="1.5" opacity=".35"/>`;
 
-  // Signal set
-  const sigSet=new Set(signals.map(s=>s.idx));
-
-  // Dots
+  // Dots — colour by signal level when showSignalColors=true
   const dots=vals.map((v,i)=>{
-    const isSig=sigSet.has(i);
-    const fill=isSig?'#ee7766':'#4dbdc6';
-    const stroke=isSig?'#c76f37':'#0b707d';
-    return `<circle class="dot" cx="${xPos(i)}" cy="${yPos(v)}" r="6" fill="${fill}" fill-opacity=".7" stroke="${stroke}" stroke-width="2"
-      data-id="${ids[i]}" data-closed="${dates[i]}" data-cycle="${v}" data-sp="–" style="cursor:pointer;transition:r .15s,fill-opacity .15s;"/>`;
+    const l=showSignalColors?lvl[i]:0;
+    const fill=SIG_FILL[l], stroke=SIG_STROKE[l];
+    return `<circle class="dot" cx="${xPos(i)}" cy="${yPos(v)}" r="7" fill="${fill}" fill-opacity=".75" stroke="${stroke}" stroke-width="2"
+      data-id="${ids[i]}" data-closed="${dates[i]}" data-cycle="${v}" data-sp="–" data-siglvl="${lvl[i]}"
+      style="cursor:pointer;transition:r .15s,fill-opacity .15s;"/>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W+95} ${H}">
+  return `<svg viewBox="0 0 ${W+100} ${H}">
     <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${H-pad.bottom}" stroke="#dbe4e8" stroke-width="1.5"/>
     <line x1="${pad.left}" y1="${H-pad.bottom}" x2="${W-pad.right}" y2="${H-pad.bottom}" stroke="#dbe4e8" stroke-width="1.5"/>
-    ${grid}${xLabels}${cLines}${lineSVG}${dots}
+    ${grid}${zones}${xLabels}${cLines}${lineSVG}${dots}
     <text x="12" y="${pad.top+ch/2}" text-anchor="middle" fill="#4c778b" font-size="11" font-weight="700" letter-spacing="1" transform="rotate(-90 12 ${pad.top+ch/2})">CYCLE TIME</text>
   </svg>`;
+}
+
+function renderXMR(xmr){
+  if(!xmr)return;
+  document.getElementById('chartX').innerHTML=buildXChart(xmr);
+  bindTooltips();
 }
 
 function buildMRChart(xmr){
@@ -512,28 +652,64 @@ function render(){
 
   // XMR
   const xmr=calcXMR(filtered);
+  lastXMR=xmr;
   document.getElementById('chartX').innerHTML=buildXChart(xmr);
   document.getElementById('chartMR').innerHTML=buildMRChart(xmr);
 
   if(xmr){
+    const totalSigs=Object.values(xmr.counts).reduce((a,b)=>a+b,0);
     document.getElementById('xmrKpis').innerHTML=`
       <div class="xmr-kpi"><div class="kpi-label">Median (X̃)</div><div class="kpi-value">${xmr.medX.toFixed(1)}<span>days</span></div></div>
       <div class="xmr-kpi"><div class="kpi-label">Median MR (MR̃)</div><div class="kpi-value">${xmr.medMR.toFixed(1)}<span>days</span></div></div>
       <div class="xmr-kpi"><div class="kpi-label">UNPL</div><div class="kpi-value">${xmr.UNPL.toFixed(1)}<span>days</span></div><div class="kpi-sub">X̃ + 2.66 × MR̃</div></div>
       <div class="xmr-kpi"><div class="kpi-label">LNPL</div><div class="kpi-value">${xmr.LNPL.toFixed(1)}<span>days</span></div><div class="kpi-sub">X̃ − 2.66 × MR̃</div></div>
       <div class="xmr-kpi"><div class="kpi-label">URL (MR)</div><div class="kpi-value">${xmr.URL_MR.toFixed(1)}<span>days</span></div><div class="kpi-sub">3.267 × MR̃</div></div>
-      <div class="xmr-kpi"><div class="kpi-label">Signals</div><div class="kpi-value">${xmr.signals.length}</div><div class="kpi-sub">${xmr.signals.length===0?'<span class="signal-dot signal-green"></span>Predictable':'<span class="signal-dot signal-red"></span>Special cause'}</div></div>
+      <div class="xmr-kpi"><div class="kpi-label">Total Signals</div><div class="kpi-value">${totalSigs}</div><div class="kpi-sub">${totalSigs===0?'<span class="signal-dot signal-green" style="background:#6dbf8a;"></span>Predictable':'<span class="signal-dot signal-red" style="background:#ee7766;"></span>Special cause'}</div></div>
     `;
-    // Signal table
-    if(xmr.signals.length){
-      document.getElementById('signalBody').innerHTML=xmr.signals.map(s=>`
-        <tr><td><span class="signal-dot signal-red"></span>Special cause</td><td style="font-weight:700;font-size:11px;color:var(--sea-faded);">${s.id}</td>
-        <td style="font-weight:700;color:var(--coral);">${s.val}d</td><td>${s.type} (${fmtDate(s.date)})</td></tr>`).join('');
+
+    // Signal summary cards
+    document.getElementById('sigSummaryGrid').innerHTML=`
+      <div class="sig-card sig-card-1">
+        <div class="sig-card-title"><span class="sig-swatch sig-s1"></span>Signal 1 — Beyond Limit</div>
+        <div class="sig-card-count">${xmr.counts[4]}</div>
+        <div class="sig-card-desc">Point above UNPL or below LNPL</div>
+      </div>
+      <div class="sig-card sig-card-2">
+        <div class="sig-card-title"><span class="sig-swatch sig-s2"></span>Signal 2 — Outer 2/3 Zone</div>
+        <div class="sig-card-count">${xmr.counts[3]}</div>
+        <div class="sig-card-desc">2 of 3 consecutive in outer zone (> 2/3 from median to limit)</div>
+      </div>
+      <div class="sig-card sig-card-3">
+        <div class="sig-card-title"><span class="sig-swatch sig-s3"></span>Signal 3 — Beyond 1/3 Zone</div>
+        <div class="sig-card-count">${xmr.counts[2]}</div>
+        <div class="sig-card-desc">3 of 5 consecutive beyond 1/3 from median to limit</div>
+      </div>
+      <div class="sig-card sig-card-4">
+        <div class="sig-card-title"><span class="sig-swatch sig-s4"></span>Signal 4 — Run of 8</div>
+        <div class="sig-card-count">${xmr.counts[1]}</div>
+        <div class="sig-card-desc">8+ consecutive values on same side of median</div>
+      </div>
+    `;
+
+    // Signal detail table
+    if(xmr.signalDetail.length){
+      document.getElementById('signalBody').innerHTML=xmr.signalDetail.map(s=>{
+        const colors={4:'var(--coral)',3:'#f7a440',2:'var(--honey)',1:'#6dbf8a'};
+        const swatches={4:'sig-s1',3:'sig-s2',2:'sig-s3',1:'sig-s4'};
+        return `<tr>
+          <td><span class="sig-swatch ${swatches[s.level]}"></span>${SIG_LABEL[s.level]}</td>
+          <td style="font-weight:700;font-size:11px;color:var(--sea-faded);">${s.id}</td>
+          <td style="font-weight:700;color:${colors[s.level]};">${s.val}d</td>
+          <td>${fmtDate(s.date)}</td>
+          <td style="font-size:11px;color:var(--sea-faded);">${SIG_DESC[s.level]}</td>
+        </tr>`;
+      }).join('');
     } else {
-      document.getElementById('signalBody').innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--mint);padding:16px;"><span class="signal-dot signal-green"></span>Process is predictable — no special cause signals detected</td></tr>';
+      document.getElementById('signalBody').innerHTML='<tr><td colspan="5" style="text-align:center;color:#6dbf8a;padding:16px;font-weight:600;"><span class="sig-swatch sig-s4"></span>Proces jest przewidywalny — brak sygnałów specjalnych</td></tr>';
     }
   } else {
     document.getElementById('xmrKpis').innerHTML='';
+    document.getElementById('sigSummaryGrid').innerHTML='';
     document.getElementById('signalBody').innerHTML='';
   }
 
