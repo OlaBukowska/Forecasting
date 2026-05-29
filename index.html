@@ -116,11 +116,11 @@
 
   /* Signal color coding */
   .sig-swatch{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1.5px solid rgba(0,0,0,0.15);}
-  .sig-s1{background:#ee7766;}
-  .sig-s2{background:#f7a440;}
-  .sig-s3{background:#fcca83;}
-  .sig-s4{background:#6dbf8a;}
-  .sig-none{background:#4dbdc6;}
+  .sig-s1{background:#e03030;}
+  .sig-s2{background:#7c3aed;}
+  .sig-s3{background:#2563eb;}
+  .sig-s4{background:#16a34a;}
+  .sig-none{background:#1a1a1a;}
 
   .color-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;padding:7px 14px;border:1.5px solid var(--sea-tint);border-radius:20px;background:#fff;transition:all .15s;user-select:none;}
   .color-toggle:hover{border-color:var(--sea-clear);}
@@ -130,10 +130,10 @@
 
   .sig-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:16px;}
   .sig-card{border-radius:8px;padding:14px 16px;border-left:4px solid;background:rgba(255,255,255,0.7);}
-  .sig-card-1{border-left-color:#ee7766;background:rgba(238,119,102,0.06);}
-  .sig-card-2{border-left-color:#f7a440;background:rgba(247,164,64,0.06);}
-  .sig-card-3{border-left-color:#fcca83;background:rgba(252,202,131,0.06);}
-  .sig-card-4{border-left-color:#6dbf8a;background:rgba(109,191,138,0.06);}
+  .sig-card-1{border-left-color:#e03030;background:rgba(224,48,48,0.05);}
+  .sig-card-2{border-left-color:#7c3aed;background:rgba(124,58,237,0.05);}
+  .sig-card-3{border-left-color:#2563eb;background:rgba(37,99,235,0.05);}
+  .sig-card-4{border-left-color:#16a34a;background:rgba(22,163,74,0.05);}
   .sig-card-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sea-faded);margin-bottom:4px;}
   .sig-card-count{font-size:24px;font-weight:800;color:var(--ocean);}
   .sig-card-desc{font-size:11px;color:var(--sea-faded);margin-top:2px;}
@@ -437,8 +437,8 @@ function detectSignalLevels(vals, medX, UNPL, LNPL){
   return {lvl,u1,u2,l1,l2};
 }
 
-const SIG_FILL  ={0:'#4dbdc6', 1:'#6dbf8a', 2:'#fcca83', 3:'#f7a440', 4:'#ee7766'};
-const SIG_STROKE={0:'#0b707d', 1:'#3a9a5c', 2:'#c76f37', 3:'#c76f37', 4:'#c43020'};
+const SIG_FILL  ={0:'#1a1a1a', 1:'#16a34a', 2:'#2563eb', 3:'#7c3aed', 4:'#e03030'};
+const SIG_STROKE={0:'#000000', 1:'#15803d', 2:'#1d4ed8', 3:'#5b21b6', 4:'#b91c1c'};
 const SIG_LABEL ={1:'S4 — Run of 8', 2:'S3 — 3/5 outer third', 3:'S2 — 2/3 outer zone', 4:'S1 — Beyond limit'};
 const SIG_DESC  ={
   1:'8+ consecutive values on same side of median',
@@ -694,7 +694,7 @@ function render(){
     // Signal detail table
     if(xmr.signalDetail.length){
       document.getElementById('signalBody').innerHTML=xmr.signalDetail.map(s=>{
-        const colors={4:'var(--coral)',3:'#f7a440',2:'var(--honey)',1:'#6dbf8a'};
+        const colors={4:'#e03030',3:'#7c3aed',2:'#2563eb',1:'#16a34a'};
         const swatches={4:'sig-s1',3:'sig-s2',2:'sig-s3',1:'sig-s4'};
         return `<tr>
           <td><span class="sig-swatch ${swatches[s.level]}"></span>${SIG_LABEL[s.level]}</td>
