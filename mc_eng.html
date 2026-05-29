@@ -63,6 +63,22 @@
   .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 12px; color: #4c778b; }
   .legend span { display: flex; align-items: center; gap: 4px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  /* Tips & tooltips */
+  .tip-box { background: #eef5f7; border-left: 3px solid #4dbdc6; border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 1rem; font-size: 13px; color: #003755; }
+  .tip-box strong { display: block; margin-bottom: 3px; font-weight: 500; color: #005f85; }
+  .inline-tip { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 8px 12px; background: #eef5f7; border-radius: 8px; font-size: 12px; color: #4c778b; }
+  .inline-tip i { flex-shrink: 0; margin-top: 1px; color: #4dbdc6; }
+  .section-tip { margin-bottom: 12px; font-size: 12px; color: #4c778b; line-height: 1.5; }
+  .section-tip strong { color: #005f85; font-weight: 500; }
+  .help-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #c8d8de; color: #005f85; font-size: 10px; font-weight: 700; cursor: default; margin-left: 5px; vertical-align: middle; position: relative; }
+  .help-icon:hover .tooltip-text { display: block; }
+  .tooltip-text { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #003755; color: #fff; font-size: 11px; font-weight: 400; padding: 6px 10px; border-radius: 6px; white-space: nowrap; z-index: 10; min-width: 220px; line-height: 1.4; }
+  .tooltip-text::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #003755; }
+  .phrase-box { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .phrase { background: #eef5f7; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+  .phrase .q { color: #4c778b; margin-bottom: 3px; }
+  .phrase .a { color: #003755; font-weight: 500; }
+  @media (max-width: 560px) { .phrase-box { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -70,6 +86,10 @@
   <h1 class="title"><i class="ti ti-chart-line" style="font-size:18px;vertical-align:-2px;margin-right:6px"></i>Monte Carlo — delivery forecast</h1>
   <p class="sub">10,000 iteration simulation · Current sprint: 2026.12 (start May 27) · Sprint: 2 weeks</p>
 
+  <div class="tip-box">
+    <strong><i class="ti ti-bulb" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>How to read this forecast</strong>
+    Monte Carlo simulation runs 10,000 scenarios by randomly sampling your team's historical throughput. The result is a probability distribution — not a single date, but a range of likely outcomes. Use <strong>75%</strong> for optimistic planning, <strong>85%</strong> for stakeholder commitments, and <strong>99%</strong> when you need near-certainty.
+  </div>
   <div class="ctrl-row">
     <label><i class="ti ti-list-check" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>Backlog items</label>
     <input type="range" id="backlogSlider" min="1" max="60" value="17" step="1">
@@ -79,12 +99,18 @@
   <div class="metric-grid" id="metricGrid"></div>
 
   <div class="card">
-    <div class="card-title"><i class="ti ti-calendar-check" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>When will all items be completed?</div>
+    <div class="card-title"><i class="ti ti-calendar-check" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>When will all items be completed?<span class="help-icon">?<span class="tooltip-text">Each row answers: "In what % of simulated futures is everything done by this sprint?" Use 85% for a safe commitment to stakeholders.</span></span></div>
+    <p class="section-tip">Each confidence level tells you how <strong>safe</strong> that date is to commit to. Saying <em>"we'll be done by [85% date]"</em> means 85 out of 100 simulated futures delivered on time.</p>
     <div id="completionRows"></div>
+    <div class="inline-tip">
+      <i class="ti ti-message-circle" style="font-size:14px;"></i>
+      <span><strong style="color:#003755;">When asked "when will it be done?"</strong> — point to the <strong style="color:#c76f37;">85% row</strong>: <em>"Based on our velocity, we expect to finish by [date] — that's an 85% confidence forecast from Monte Carlo simulation."</em></span>
+    </div>
   </div>
 
   <div class="card">
-    <div class="card-title"><i class="ti ti-calendar-event" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>How many items will be completed by the selected date with 95% confidence?</div>
+    <div class="card-title"><i class="ti ti-calendar-event" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>How many items will be completed by the selected date with 95% confidence?<span class="help-icon">?<span class="tooltip-text">95% confidence means: in 95 out of 100 simulations, at least this many items were delivered by the chosen date.</span></span></div>
+    <p class="section-tip">Use this when a stakeholder names a fixed deadline and asks <em>"what can we realistically promise?"</em> — the number shown is what you can commit to with high confidence.</p>
     <div class="date-section">
       <label><i class="ti ti-calendar" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Target date</label>
       <input type="date" id="targetDate" value="2026-06-30">
@@ -98,6 +124,7 @@
       </div>
     </div>
     <div id="juneMsg"></div>
+    <div id="phraseSuggestion"></div>
   </div>
 
   <div class="card">
@@ -123,6 +150,10 @@
       <canvas id="throughputChart" role="img" aria-label="Historical team throughput per sprint">Historical team throughput per sprint.</canvas>
     </div>
     <table class="tp-table"><thead><tr><th>Sprint</th><th>Items</th><th></th></tr></thead><tbody id="tpBody"></tbody></table>
+    <div class="inline-tip" style="margin-top:10px;margin-bottom:6px;">
+      <i class="ti ti-info-circle" style="font-size:14px;"></i>
+      <span>Newer sprints carry more weight when the <strong style="color:#003755;">window is narrow</strong>. If recent velocity differs greatly from older data, adjust the <em>Sprints included</em> slider to reflect your team's current pace. Dark bars = high velocity sprints (≥5 items).</span>
+    </div>
     <button class="add-row-btn" id="addRowBtn"><i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Add sprint</button>
   </div>
 </div>
@@ -184,10 +215,16 @@ function runSimulation(){
     document.getElementById('juneNum').textContent='—';
     document.getElementById('juneSprints').textContent='';
     document.getElementById('juneMsg').innerHTML='<div class="june-warn">Selected date is before the end of the current sprint — no full sprints available for simulation.</div>';
+    document.getElementById('phraseSuggestion').innerHTML='';
   } else {
     document.getElementById('juneNum').textContent=tP95;
     document.getElementById('juneSprints').textContent=`${tsc} ${tsc===1?'sprint':'sprints'} · last: ${sprintLabel(tsc-1)}`;
     document.getElementById('juneMsg').innerHTML=tP95>=backlog?'<div class="june-ok">The entire backlog will likely be completed before this date.</div>':'';
+    const tDate=getTargetDate().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    document.getElementById('phraseSuggestion').innerHTML=tsc>0?`<div class="phrase-box">
+      <div class="phrase"><div class="q">💬 Say to your manager:</div><div class="a">"By ${tDate} we can confidently deliver ${tP95} items — that's a 95% confidence forecast."</div></div>
+      <div class="phrase"><div class="q">💬 Say to your team:</div><div class="a">"We have ${tsc} sprint${tsc===1?'':'s'} to ${tDate}. At 95% confidence, we should aim to complete ${tP95} backlog items."</div></div>
+    </div>`:'';
   }
 
   const sc={};simResults.forEach(s=>{sc[s]=(sc[s]||0)+1;});
