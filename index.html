@@ -185,7 +185,7 @@
         </div>
         <div class="legend">
           <div class="legend-item"><div class="legend-dot"></div> Cycle Time</div>
-          <div class="legend-item"><div class="legend-line" style="background:var(--teal);"></div> Mean (X̄)</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--teal);"></div> Median (X̃)</div>
           <div class="legend-item"><div class="legend-line" style="background:var(--coral);"></div> UNPL / LNPL</div>
           <div class="legend-item"><div class="legend-line" style="background:var(--honey);"></div> URL (MR)</div>
         </div>
@@ -321,6 +321,13 @@ function buildScatter(data,p50,p85,p96){
 }
 
 // ── XMR CHART ──
+function median(arr){
+  if(!arr.length)return 0;
+  const s=[...arr].sort((a,b)=>a-b);
+  const mid=Math.floor(s.length/2);
+  return s.length%2===0?(s[mid-1]+s[mid])/2:s[mid];
+}
+
 function calcXMR(data){
   // sort oldest first
   const sorted=[...data].sort((a,b)=>new Date(a.closed)-new Date(b.closed));
@@ -330,16 +337,16 @@ function calcXMR(data){
   const n=vals.length;
   if(n<2)return null;
 
-  const mean=vals.reduce((a,b)=>a+b,0)/n;
+  const medX=median(vals);
 
   // Moving ranges
   const mr=[];
   for(let i=1;i<n;i++) mr.push(Math.abs(vals[i]-vals[i-1]));
-  const avgMR=mr.reduce((a,b)=>a+b,0)/mr.length;
+  const medMR=median(mr);
 
-  const UNPL=mean+2.66*avgMR;
-  const LNPL=Math.max(0,mean-2.66*avgMR);
-  const URL_MR=3.267*avgMR; // D4 for n=2
+  const UNPL=medX+2.66*medMR;
+  const LNPL=Math.max(0,medX-2.66*medMR);
+  const URL_MR=3.267*medMR; // D4 for n=2
 
   // Detect signals: points outside limits
   const signals=[];
@@ -348,12 +355,12 @@ function calcXMR(data){
     else if(v<LNPL) signals.push({idx:i,id:ids[i],val:v,type:'Below LNPL',date:dates[i]});
   });
 
-  return {vals,mr,ids,dates,mean,avgMR,UNPL,LNPL,URL_MR,signals,n};
+  return {vals,mr,ids,dates,medX,medMR,UNPL,LNPL,URL_MR,signals,n};
 }
 
 function buildXChart(xmr){
   if(!xmr)return '<div style="padding:40px;text-align:center;color:var(--sea-faded);">Potrzeba min. 2 punktów danych</div>';
-  const {vals,ids,dates,mean,UNPL,LNPL,signals,n}=xmr;
+  const {vals,ids,dates,medX,UNPL,LNPL,signals,n}=xmr;
   const W=1100,H=320,pad={top:32,right:26,bottom:52,left:52};
   const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
   const maxV=Math.max(...vals,UNPL)*1.12;
@@ -388,7 +395,7 @@ function buildXChart(xmr){
       <rect x="${W-pad.right+4}" y="${yy-11}" width="${tw}" height="22" rx="4" fill="${color}" opacity=".12"/>
       <text x="${W-pad.right+12}" y="${yy+4}" fill="${color}" font-size="10" font-weight="700">${label}</text>`;
   }
-  const cLines=cLine(mean,'#0b707d',`X̄: ${mean.toFixed(1)}`,'')
+  const cLines=cLine(medX,'#0b707d',`X̃: ${medX.toFixed(1)}`,'')
     +cLine(UNPL,'#ee7766',`UNPL: ${UNPL.toFixed(1)}`,'6 3')
     +(LNPL>0?cLine(LNPL,'#ee7766',`LNPL: ${LNPL.toFixed(1)}`,'6 3'):'');
 
@@ -419,7 +426,7 @@ function buildXChart(xmr){
 
 function buildMRChart(xmr){
   if(!xmr)return '';
-  const {mr,ids,dates,avgMR,URL_MR,n}=xmr;
+  const {mr,ids,dates,medMR,URL_MR,n}=xmr;
   const W=1100,H=240,pad={top:28,right:26,bottom:48,left:52};
   const cw=W-pad.left-pad.right,ch=H-pad.top-pad.bottom;
   const maxV=Math.max(...mr,URL_MR)*1.15;
@@ -451,7 +458,7 @@ function buildMRChart(xmr){
       <rect x="${W-pad.right+4}" y="${yy-11}" width="${tw}" height="22" rx="4" fill="${color}" opacity=".12"/>
       <text x="${W-pad.right+12}" y="${yy+4}" fill="${color}" font-size="10" font-weight="700">${label}</text>`;
   }
-  const cLines=cLine(avgMR,'#0b707d',`MR̄: ${avgMR.toFixed(1)}`,'')
+  const cLines=cLine(medMR,'#0b707d',`MR̃: ${medMR.toFixed(1)}`,'')
     +cLine(URL_MR,'#fcca83',`URL: ${URL_MR.toFixed(1)}`,'6 3');
 
   let path='';
@@ -510,11 +517,11 @@ function render(){
 
   if(xmr){
     document.getElementById('xmrKpis').innerHTML=`
-      <div class="xmr-kpi"><div class="kpi-label">Mean (X̄)</div><div class="kpi-value">${xmr.mean.toFixed(1)}<span>days</span></div></div>
-      <div class="xmr-kpi"><div class="kpi-label">Avg MR (MR̄)</div><div class="kpi-value">${xmr.avgMR.toFixed(1)}<span>days</span></div></div>
-      <div class="xmr-kpi"><div class="kpi-label">UNPL</div><div class="kpi-value">${xmr.UNPL.toFixed(1)}<span>days</span></div><div class="kpi-sub">X̄ + 2.66 × MR̄</div></div>
-      <div class="xmr-kpi"><div class="kpi-label">LNPL</div><div class="kpi-value">${xmr.LNPL.toFixed(1)}<span>days</span></div><div class="kpi-sub">X̄ − 2.66 × MR̄</div></div>
-      <div class="xmr-kpi"><div class="kpi-label">URL (MR)</div><div class="kpi-value">${xmr.URL_MR.toFixed(1)}<span>days</span></div><div class="kpi-sub">3.267 × MR̄</div></div>
+      <div class="xmr-kpi"><div class="kpi-label">Median (X̃)</div><div class="kpi-value">${xmr.medX.toFixed(1)}<span>days</span></div></div>
+      <div class="xmr-kpi"><div class="kpi-label">Median MR (MR̃)</div><div class="kpi-value">${xmr.medMR.toFixed(1)}<span>days</span></div></div>
+      <div class="xmr-kpi"><div class="kpi-label">UNPL</div><div class="kpi-value">${xmr.UNPL.toFixed(1)}<span>days</span></div><div class="kpi-sub">X̃ + 2.66 × MR̃</div></div>
+      <div class="xmr-kpi"><div class="kpi-label">LNPL</div><div class="kpi-value">${xmr.LNPL.toFixed(1)}<span>days</span></div><div class="kpi-sub">X̃ − 2.66 × MR̃</div></div>
+      <div class="xmr-kpi"><div class="kpi-label">URL (MR)</div><div class="kpi-value">${xmr.URL_MR.toFixed(1)}<span>days</span></div><div class="kpi-sub">3.267 × MR̃</div></div>
       <div class="xmr-kpi"><div class="kpi-label">Signals</div><div class="kpi-value">${xmr.signals.length}</div><div class="kpi-sub">${xmr.signals.length===0?'<span class="signal-dot signal-green"></span>Predictable':'<span class="signal-dot signal-red"></span>Special cause'}</div></div>
     `;
     // Signal table
