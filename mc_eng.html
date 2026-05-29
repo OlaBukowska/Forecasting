@@ -84,7 +84,7 @@
   </div>
 
   <div class="card">
-    <div class="card-title"><i class="ti ti-calendar-event" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>How many items will be completed by the selected date with 85% confidence?</div>
+    <div class="card-title"><i class="ti ti-calendar-event" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>How many items will be completed by the selected date with 95% confidence?</div>
     <div class="date-section">
       <label><i class="ti ti-calendar" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Target date</label>
       <input type="date" id="targetDate" value="2026-06-30">
@@ -93,7 +93,7 @@
     <div class="june-result">
       <div class="june-num" id="juneNum">—</div>
       <div>
-        <div class="june-label">items with 85% confidence</div>
+        <div class="june-label">items with 95% confidence</div>
         <div class="june-sprints" id="juneSprints"></div>
       </div>
     </div>
@@ -162,13 +162,14 @@ function runSimulation(){
   const tSim=[];
   for(let i=0;i<N;i++){let done=0;for(let s=0;s<tsc;s++)done+=randomSample(tp);tSim.push(Math.min(done,backlog));}
   tSim.sort((a,b)=>a-b);
-  const tP85=tsc>0?percentile(tSim,85):0;
+  const tP95=tsc>0?percentile(tSim,95):0;
   const avgTP=(tp.reduce((a,b)=>a+b,0)/tp.length).toFixed(1);
 
   document.getElementById('metricGrid').innerHTML=`
     <div class="metric"><div class="label">Avg throughput</div><div class="value">${avgTP}</div><div class="sub2">${Math.min(historyCount,throughputData.length)} last sprints</div></div>
     <div class="metric"><div class="label">Current sprint</div><div class="value">2026.12</div><div class="sub2">start May 27</div></div>
     <div class="metric"><div class="label">Backlog items</div><div class="value">${backlog}</div><div class="sub2">remaining</div></div>
+    <div class="metric"><div class="label">Total throughput</div><div class="value">${tp.reduce((a,b)=>a+b,0)}</div><div class="sub2">${Math.min(historyCount,throughputData.length)} sprints · avg ${avgTP}</div></div>
     <div class="metric"><div class="label">Sprints to date</div><div class="value">${Math.max(0,tsc)}</div><div class="sub2">${tsc>0?'ends in '+sprintLabel(tsc-1):'none'}</div></div>
   `;
 
@@ -184,9 +185,9 @@ function runSimulation(){
     document.getElementById('juneSprints').textContent='';
     document.getElementById('juneMsg').innerHTML='<div class="june-warn">Selected date is before the end of the current sprint — no full sprints available for simulation.</div>';
   } else {
-    document.getElementById('juneNum').textContent=tP85;
+    document.getElementById('juneNum').textContent=tP95;
     document.getElementById('juneSprints').textContent=`${tsc} ${tsc===1?'sprint':'sprints'} · last: ${sprintLabel(tsc-1)}`;
-    document.getElementById('juneMsg').innerHTML=tP85>=backlog?'<div class="june-ok">The entire backlog will likely be completed before this date.</div>':'';
+    document.getElementById('juneMsg').innerHTML=tP95>=backlog?'<div class="june-ok">The entire backlog will likely be completed before this date.</div>':'';
   }
 
   const sc={};simResults.forEach(s=>{sc[s]=(sc[s]||0)+1;});
