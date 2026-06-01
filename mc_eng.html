@@ -130,13 +130,15 @@
   <div class="card">
     <div class="card-title"><i class="ti ti-chart-histogram" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Completion distribution</div>
     <div class="legend">
-      <span><span class="legend-dot" style="background:#ee7766"></span>up to 75% confidence</span>
-      <span><span class="legend-dot" style="background:#c76f37"></span>75–85% confidence</span>
-      <span><span class="legend-dot" style="background:#0b707d"></span>above 85% confidence</span>
+      <span><span class="legend-dot" style="background:#ee7766"></span>up to 75%</span>
+      <span><span class="legend-dot" style="background:#c76f37"></span>75–85%</span>
+      <span><span class="legend-dot" style="background:#0b707d"></span>above 85%</span>
+      <span style="margin-left:8px;display:flex;align-items:center;gap:4px;"><span style="width:18px;height:2px;background:#005f85;display:inline-block;border-radius:1px;"></span>cumulative confidence</span>
     </div>
     <div style="position:relative;width:100%;height:220px;">
-      <canvas id="histChart" role="img" aria-label="Histogram of sprint count distribution to complete the backlog">Distribution of sprint counts in Monte Carlo simulation.</canvas>
+      <canvas id="histChart" role="img" aria-label="Histogram of sprint count distribution with cumulative confidence line">Distribution of sprint counts and cumulative confidence per sprint.</canvas>
     </div>
+    <div id="confTable" style="margin-top:14px;overflow-x:auto;"></div>
   </div>
 
   <div class="card">
@@ -193,7 +195,7 @@ function runSimulation(){
   const tSim=[];
   for(let i=0;i<N;i++){let done=0;for(let s=0;s<tsc;s++)done+=randomSample(tp);tSim.push(Math.min(done,backlog));}
   tSim.sort((a,b)=>a-b);
-  const tP95=tsc>0?percentile(tSim,95):0;
+  const tP95=tsc>0?percentile(tSim,5):0; // 5th percentile = guaranteed by 95% of simulations
   const avgTP=(tp.reduce((a,b)=>a+b,0)/tp.length).toFixed(1);
 
   document.getElementById('metricGrid').innerHTML=`
@@ -229,12 +231,66 @@ function runSimulation(){
 
   const sc={};simResults.forEach(s=>{sc[s]=(sc[s]||0)+1;});
   const sk=Object.keys(sc).map(Number).sort((a,b)=>a-b);
+  // Build cumulative confidence per sprint
   const hLabels=sk.map(s=>sprintLabel(s));
   const hData=sk.map(s=>+((sc[s]||0)/N*100).toFixed(1));
   const hColors=sk.map(s=>s<=p75off?'#ee7766':s<=p85off?'#c76f37':'#0b707d');
+  let cumSum=0;
+  const cumData=sk.map(s=>{cumSum+=((sc[s]||0)/N*100);return+cumSum.toFixed(1);});
 
-  if(histChartInst){histChartInst.data.labels=hLabels;histChartInst.data.datasets[0].data=hData;histChartInst.data.datasets[0].backgroundColor=hColors;histChartInst.update();}
-  else{histChartInst=new Chart(document.getElementById('histChart'),{type:'bar',data:{labels:hLabels,datasets:[{label:'% of simulations',data:hData,backgroundColor:hColors,borderWidth:0,borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y.toFixed(1)}% of simulations`}}},scales:{x:{ticks:{font:{size:11},maxRotation:45,color:'#4c778b',autoSkip:false},grid:{display:false}},y:{ticks:{font:{size:11},color:'#4c778b',callback:v=>v.toFixed(0)+'%'},grid:{color:'rgba(76,119,139,0.2)'}}}}});}
+  // Confidence table
+  const tableRows=sk.map((s,i)=>{
+    const conf=cumData[i];
+    const badge=conf>=99?'#b4dac3;color:#316c59':conf>=85?'#b4dac3;color:#316c59':conf>=75?'#fef3dc;color:#c76f37':'#fde8e4;color:#c76f37';
+    return`<tr><td style="padding:4px 10px;font-size:12px;color:#4c778b;">${sprintLabel(s)}</td><td style="padding:4px 10px;font-size:12px;color:#003755;">${sprintEndDate(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td><td style="padding:4px 10px;font-size:12px;color:#4c778b;">${hData[i].toFixed(1)}%</td><td style="padding:4px 8px;"><span style="display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:5px;background:${badge};">${conf.toFixed(0)}%</span></td></tr>`;
+  }).join('');
+  document.getElementById('confTable').innerHTML=`<table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Sprint</th><th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">End date</th><th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Simulations finishing here</th><th style="padding:4px 8px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Cumulative confidence</th></tr><tbody>${tableRows}</tbody></table>`;
+
+  if(histChartInst){
+    histChartInst.data.labels=hLabels;
+    histChartInst.data.datasets[0].data=hData;
+    histChartInst.data.datasets[0].backgroundColor=hColors;
+    histChartInst.data.datasets[1].data=cumData;
+    histChartInst.update();
+  } else {
+    histChartInst=new Chart(document.getElementById('histChart'),{
+      type:'bar',
+      data:{
+        labels:hLabels,
+        datasets:[
+          {label:'% finishing this sprint',data:hData,backgroundColor:hColors,borderWidth:0,borderRadius:2,yAxisID:'y'},
+          {label:'Cumulative confidence',data:cumData,type:'line',borderColor:'#005f85',backgroundColor:'rgba(0,95,133,0.08)',borderWidth:2,pointBackgroundColor:'#005f85',pointRadius:3,pointHoverRadius:5,tension:0.3,fill:true,yAxisID:'y2'}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{
+            title:items=>`Sprint ${items[0].label}`,
+            label:ctx=>{
+              if(ctx.datasetIndex===0) return`${ctx.parsed.y.toFixed(1)}% of simulations finish here`;
+              return`${ctx.parsed.y.toFixed(0)}% cumulative confidence`;
+            },
+            afterBody:items=>{
+              const conf=items.find(i=>i.datasetIndex===1)?.parsed.y;
+              if(conf===undefined) return[];
+              if(conf>=99) return['✅ 99%+ confidence — very safe to commit'];
+              if(conf>=85) return['🟢 85%+ confidence — safe for stakeholder commitment'];
+              if(conf>=75) return['🟡 75%+ confidence — optimistic estimate'];
+              return['🔴 Below 75% — risky commitment'];
+            }
+          }}
+        },
+        scales:{
+          x:{ticks:{font:{size:11},maxRotation:45,color:'#4c778b',autoSkip:false},grid:{display:false}},
+          y:{position:'left',ticks:{font:{size:11},color:'#4c778b',callback:v=>v.toFixed(0)+'%'},grid:{color:'rgba(76,119,139,0.2)'},title:{display:true,text:'% finishing this sprint',font:{size:10},color:'#4c778b'}},
+          y2:{position:'right',min:0,max:100,ticks:{font:{size:11},color:'#005f85',callback:v=>v+'%'},grid:{display:false},title:{display:true,text:'Cumulative confidence',font:{size:10},color:'#005f85'}}
+        }
+      }
+    });
+  }
 
   updateTpChart();
 }
