@@ -1,1 +1,607 @@
-|Contract Integration page
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monte Carlo — delivery forecast</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #dbe4e8; color: #003755; margin: 0; padding: 0; }
+  .page-header { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 0; }
+  h1.title { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+  p.sub { font-size: 13px; color: #4c778b; margin: 0 0 1.25rem; }
+  .tab-bar { display: flex; gap: 0; max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+  .tab-btn { padding: 10px 22px; font-size: 14px; font-weight: 500; border: none; background: #c8d8de; color: #4c778b; cursor: pointer; border-radius: 10px 10px 0 0; margin-right: 4px; transition: background 0.15s, color 0.15s; }
+  .tab-btn.active { background: #fff; color: #003755; border-bottom: 2px solid #4dbdc6; }
+  .tab-btn:hover:not(.active) { background: #b8cdd4; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .dash { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.5rem 2rem; background: #fff; border-radius: 0 12px 12px 12px; box-shadow: 0 1px 4px rgba(0,55,85,0.08); }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: #eef5f7; border-radius: 8px; padding: 12px 14px; }
+  .metric .label { font-size: 12px; color: #4c778b; margin-bottom: 4px; }
+  .metric .value { font-size: 20px; font-weight: 500; color: #003755; }
+  .metric .sub2 { font-size: 11px; color: #6e8269; margin-top: 2px; }
+  .card { background: #fff; border: 0.5px solid #a8bfc7; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 14px; font-weight: 500; color: #003755; margin: 0 0 12px; }
+  .pct-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .pct-badge { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 8px; min-width: 36px; text-align: center; }
+  .p75c { background: #fde8e4; color: #c76f37; }
+  .p85c { background: #fef3dc; color: #c76f37; }
+  .p99c { background: #b4dac3; color: #316c59; }
+  .pct-date { font-size: 14px; font-weight: 500; color: #003755; }
+  .pct-sprint { font-size: 11px; color: #4c778b; margin-left: auto; white-space: nowrap; }
+  .bar-wrap { height: 8px; background: #c8d8de; border-radius: 4px; flex: 1; overflow: hidden; min-width: 40px; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .ctrl-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: #eef5f7; border-radius: 8px; margin-bottom: 1.5rem; }
+  .ctrl-row label { font-size: 13px; color: #4c778b; white-space: nowrap; }
+  .ctrl-row input[type=range] { flex: 1; accent-color: #005f85; }
+  .ctrl-val-lg { font-size: 18px; font-weight: 500; color: #003755; min-width: 28px; text-align: right; }
+  .history-control { display: flex; align-items: center; gap: 14px; padding: 10px 12px; background: #eef5f7; border-radius: 8px; margin-bottom: 12px; }
+  .history-control label { font-size: 13px; color: #4c778b; white-space: nowrap; }
+  .history-control input[type=range] { flex: 1; accent-color: #005f85; }
+  .history-val { font-size: 14px; font-weight: 500; color: #003755; min-width: 130px; text-align: right; }
+  .tp-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  .tp-table th { color: #4c778b; font-weight: 400; text-align: left; padding: 5px 8px; border-bottom: 0.5px solid #a8bfc7; font-size: 12px; }
+  .tp-table td { padding: 5px 8px; border-bottom: 0.5px solid #c8d8de; }
+  .tp-table td input[type=text] { width: 90px; font-size: 13px; padding: 3px 6px; border: 0.5px solid #a8bfc7; border-radius: 6px; background: #fff; color: #003755; }
+  .tp-table td input[type=number] { width: 70px; font-size: 13px; padding: 3px 6px; border: 0.5px solid #a8bfc7; border-radius: 6px; background: #fff; color: #003755; }
+  .tp-table tr.excluded td { opacity: 0.38; }
+  .tp-table tr.excluded td input { pointer-events: none; }
+  .tp-table td.del-cell { text-align: center; }
+  .tp-table td.del-cell button { background: none; border: none; cursor: pointer; color: #4c778b; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+  .tp-table td.del-cell button:hover { color: #c76f37; background: #fde8e4; }
+  .add-row-btn { margin-top: 10px; font-size: 13px; padding: 6px 14px; background: none; border: 0.5px solid #a8bfc7; border-radius: 8px; cursor: pointer; color: #003755; }
+  .add-row-btn:hover { background: #eef5f7; }
+  .used-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #b4dac3; color: #003755; margin-left: 6px; vertical-align: middle; }
+  .excluded-badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #c8d8de; color: #4c778b; margin-left: 6px; vertical-align: middle; }
+  .date-section { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .date-section label { font-size: 13px; color: #4c778b; white-space: nowrap; }
+  .date-section input[type=date] { font-size: 13px; padding: 5px 10px; border: 0.5px solid #a8bfc7; border-radius: 8px; background: #eef5f7; color: #003755; }
+  .date-section input[type=date]:focus { outline: none; border-color: #005f85; }
+  .sprint-hint { font-size: 11px; color: #4c778b; }
+  .june-result { display: flex; align-items: center; gap: 20px; padding: 8px 0; }
+  .june-num { font-size: 40px; font-weight: 500; color: #005f85; line-height: 1; }
+  .june-label { font-size: 13px; color: #4c778b; }
+  .june-sprints { font-size: 12px; color: #6e8269; }
+  .june-warn { font-size: 12px; color: #c76f37; margin-top: 8px; }
+  .june-ok { font-size: 12px; color: #316c59; margin-top: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; font-size: 12px; color: #4c778b; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .tip-box { background: #eef5f7; border-left: 3px solid #4dbdc6; border-radius: 0 8px 8px 0; padding: 10px 14px; margin-bottom: 1rem; font-size: 13px; color: #003755; }
+  .tip-box strong { display: block; margin-bottom: 3px; font-weight: 500; color: #005f85; }
+  .inline-tip { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; padding: 8px 12px; background: #eef5f7; border-radius: 8px; font-size: 12px; color: #4c778b; }
+  .inline-tip i { flex-shrink: 0; margin-top: 1px; color: #4dbdc6; }
+  .section-tip { margin-bottom: 12px; font-size: 12px; color: #4c778b; line-height: 1.5; }
+  .section-tip strong { color: #005f85; font-weight: 500; }
+  .help-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #c8d8de; color: #005f85; font-size: 10px; font-weight: 700; cursor: default; margin-left: 5px; vertical-align: middle; position: relative; }
+  .help-icon:hover .tooltip-text { display: block; }
+  .tooltip-text { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #003755; color: #fff; font-size: 11px; font-weight: 400; padding: 6px 10px; border-radius: 6px; white-space: nowrap; z-index: 10; min-width: 220px; line-height: 1.4; }
+  .tooltip-text::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #003755; }
+  .phrase-box { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .phrase { background: #eef5f7; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+  .phrase .q { color: #4c778b; margin-bottom: 3px; }
+  .phrase .a { color: #003755; font-weight: 500; }
+  /* Scatterplot tab */
+  .scatter-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .pct-line { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .pct-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  @media (max-width: 560px) { .phrase-box { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1 class="title"><i class="ti ti-chart-line" style="font-size:18px;vertical-align:-2px;margin-right:6px"></i>Monte Carlo — delivery forecast</h1>
+  <p class="sub">10,000 iteration simulation · Current sprint: 2026.12 (start May 27) · Sprint: 2 weeks · Data: Contract Integration Stories</p>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('main',this)"><i class="ti ti-flag" style="font-size:13px;vertical-align:-1px;margin-right:5px"></i>Main initiative</button>
+  <button class="tab-btn" onclick="switchTab('scatter',this)"><i class="ti ti-chart-dots" style="font-size:13px;vertical-align:-1px;margin-right:5px"></i>Scatterplot</button>
+</div>
+
+<!-- ═══ TAB: Main initiative ═══ -->
+<div id="tab-main" class="tab-panel active">
+<div class="dash">
+  <div class="tip-box">
+    <strong><i class="ti ti-bulb" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>How to read this forecast</strong>
+    Monte Carlo simulation runs 10,000 scenarios sampling historical throughput. Use <strong>75%</strong> for optimistic planning, <strong>85%</strong> for stakeholder commitments, <strong>99%</strong> for near-certainty. Throughput data sourced from the last 4 completed sprints (2026.08–2026.11).
+  </div>
+  <div class="ctrl-row">
+    <label><i class="ti ti-list-check" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>Backlog items</label>
+    <input type="range" id="main-backlogSlider" min="1" max="60" value="17" step="1">
+    <span class="ctrl-val-lg" id="main-backlogVal">17</span>
+  </div>
+  <div class="metric-grid" id="main-metricGrid"></div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-calendar-check" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>When will all items be completed?<span class="help-icon">?<span class="tooltip-text">Each row: in what % of simulated futures is everything done by this sprint? Use 85% for stakeholder commitments.</span></span></div>
+    <p class="section-tip">Each confidence level tells you how <strong>safe</strong> that date is to commit to. <em>"We'll be done by [85% date]"</em> means 85 out of 100 simulated futures delivered on time.</p>
+    <div id="main-completionRows"></div>
+    <div class="inline-tip"><i class="ti ti-message-circle" style="font-size:14px;"></i><span><strong style="color:#003755;">When asked "when will it be done?"</strong> — point to the <strong style="color:#c76f37;">85% row</strong>: <em>"Based on our velocity, we expect to finish by [date] — 85% confidence from Monte Carlo."</em></span></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-calendar-event" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>How many items will be completed by the selected date with 95% confidence?<span class="help-icon">?<span class="tooltip-text">95% confidence: in 95 of 100 simulations at least this many items were delivered by the chosen date.</span></span></div>
+    <p class="section-tip">Use when a stakeholder names a fixed deadline — the number shown is what you can commit to with high confidence.</p>
+    <div class="date-section">
+      <label><i class="ti ti-calendar" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Target date</label>
+      <input type="date" id="main-targetDate" value="2026-06-30">
+      <span class="sprint-hint" id="main-sprintHint"></span>
+    </div>
+    <div class="june-result">
+      <div class="june-num" id="main-juneNum">—</div>
+      <div><div class="june-label">items with 95% confidence</div><div class="june-sprints" id="main-juneSprints"></div></div>
+    </div>
+    <div id="main-juneMsg"></div>
+    <div id="main-phraseSuggestion"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-histogram" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Completion distribution</div>
+    <div class="legend">
+      <span><span class="legend-dot" style="background:#ee7766"></span>up to 75%</span>
+      <span><span class="legend-dot" style="background:#c76f37"></span>75–85%</span>
+      <span><span class="legend-dot" style="background:#0b707d"></span>above 85%</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:18px;height:2px;background:#005f85;display:inline-block;border-radius:1px;"></span>cumulative confidence</span>
+    </div>
+    <div style="position:relative;width:100%;height:220px;"><canvas id="main-histChart"></canvas></div>
+    <div id="main-confTable" style="margin-top:14px;overflow-x:auto;"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Historical throughput <span style="font-size:12px;font-weight:400;color:#4c778b;">(sourced from CSV — done items per sprint)</span></div>
+    <div class="history-control">
+      <label><i class="ti ti-history" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Sprints included</label>
+      <input type="range" id="main-historySlider" min="1" max="4" value="4" step="1">
+      <span class="history-val" id="main-historyVal">4 last sprints</span>
+    </div>
+    <div style="position:relative;width:100%;height:160px;"><canvas id="main-throughputChart"></canvas></div>
+    <table class="tp-table"><thead><tr><th>Sprint</th><th>Items done</th><th></th></tr></thead><tbody id="main-tpBody"></tbody></table>
+    <div class="inline-tip" style="margin-top:10px;margin-bottom:6px;">
+      <i class="ti ti-info-circle" style="font-size:14px;"></i>
+      <span>Throughput counts come directly from closed items in your CSV. Dark bars = high velocity (≥5 items). Adjust the window to weight recent sprints more.</span>
+    </div>
+    <button class="add-row-btn" id="main-addRowBtn"><i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Add sprint</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══ TAB: Scatterplot ═══ -->
+<div id="tab-scatter" class="tab-panel">
+<div class="dash">
+  <div class="tip-box">
+    <strong><i class="ti ti-bulb" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>Cycle time scatterplot — Done items only</strong>
+    Each dot is a completed work item plotted by its close date and cycle time (days from start to done). Horizontal percentile lines show the median (50%), 85th and 95th percentile cycle times — use these to answer <em>"how long does a typical item take?"</em>
+  </div>
+
+  <div class="scatter-metrics" id="scatter-metrics"></div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-dots" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Cycle time per item (days) — all sprints</div>
+    <div style="position:relative;width:100%;height:340px;"><canvas id="scatterChart"></canvas></div>
+    <div style="margin-top:10px;" id="scatter-pct-legend"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Median cycle time per sprint</div>
+    <div style="position:relative;width:100%;height:200px;"><canvas id="medianChart"></canvas></div>
+    <div class="inline-tip" style="margin-top:10px;">
+      <i class="ti ti-info-circle" style="font-size:14px;"></i>
+      <span>Median is more robust than average — a single outlier (like the 46-day item in 2026.07) won't skew it. Use the median as your <strong style="color:#003755;">SLA baseline</strong> when estimating single item delivery.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-table" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Item detail</div>
+    <div style="overflow-x:auto;" id="scatter-table"></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+// ─── Tab switching ────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── Shared constants ─────────────────────────────────────────────
+const FIRST_SPRINT_NUM = 12, FIRST_SPRINT_YEAR = 2026;
+const startDate = new Date(2026, 4, 27);
+const sprintDays = 14, N = 10000;
+
+function sprintLabel(o) { const n = FIRST_SPRINT_NUM + o; return `${FIRST_SPRINT_YEAR}.${String(n).padStart(2,'0')}`; }
+function sprintEndDate(o) { const d = new Date(startDate); d.setDate(d.getDate() + sprintDays * o); return d; }
+function formatDate(d) { return d.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'}); }
+function randomSample(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function percentile(arr, p) { const idx = Math.ceil(arr.length * p / 100) - 1; return arr[Math.max(0, Math.min(arr.length - 1, idx))]; }
+function median(arr) { const s = [...arr].sort((a,b)=>a-b); const m = Math.floor(s.length/2); return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+
+// ─── CSV data (pre-parsed, done items only) ───────────────────────
+const csvItems = [
+  {id:'246272', sprint:'2026.09', ct:13, closed:'2026-04-29'},
+  {id:'242941', sprint:'2026.04', ct:9,  closed:'2026-02-13'},
+  {id:'242876', sprint:'2026.04', ct:9,  closed:'2026-02-13'},
+  {id:'240411', sprint:'2026.03', ct:15, closed:'2026-01-23'},
+  {id:'243081', sprint:'2026.02', ct:6,  closed:'2026-01-20'},
+  {id:'243095', sprint:'2026.01', ct:2,  closed:'2025-12-31'},
+  {id:'243094', sprint:'2026.02', ct:1,  closed:'2026-01-09'},
+  {id:'251179', sprint:'2026.09', ct:4,  closed:'2026-04-27'},
+  {id:'252692', sprint:'2026.11', ct:4,  closed:'2026-05-25'},
+  {id:'243003', sprint:'2026.03', ct:13, closed:'2026-02-03'},
+  {id:'243018', sprint:'2026.01', ct:12, closed:'2025-12-31'},
+  {id:'251676', sprint:'2026.10', ct:7,  closed:'2026-05-04'},
+  {id:'243085', sprint:'2026.02', ct:6,  closed:'2026-01-14'},
+  {id:'251123', sprint:'2026.09', ct:7,  closed:'2026-04-28'},
+  {id:'246243', sprint:'2026.07', ct:14, closed:'2026-04-01'},
+  {id:'246388', sprint:'2026.09', ct:13, closed:'2026-04-20'},
+  {id:'246311', sprint:'2026.08', ct:7,  closed:'2026-04-08'},
+  {id:'246242', sprint:'2026.08', ct:2,  closed:'2026-04-03'},
+  {id:'250452', sprint:'2026.09', ct:7,  closed:'2026-04-24'},
+  {id:'240357', sprint:'2026.07', ct:4,  closed:'2026-03-24'},
+  {id:'248993', sprint:'2026.09', ct:16, closed:'2026-04-29'},
+  {id:'240507', sprint:'2026.10', ct:9,  closed:'2026-05-06'},
+  {id:'247525', sprint:'2026.11', ct:13, closed:'2026-05-26'},
+  {id:'246763', sprint:'2026.05', ct:11, closed:'2026-03-03'},
+  {id:'246130', sprint:'2026.07', ct:46, closed:'2026-04-14'},
+];
+
+// Throughput per sprint from CSV (last 4: 2026.08-2026.11)
+const csvThroughput = [
+  {sprint:'2026.08', val:2},
+  {sprint:'2026.09', val:6},
+  {sprint:'2026.10', val:2},
+  {sprint:'2026.11', val:2},
+];
+
+// ─── Main initiative tab state ────────────────────────────────────
+const tabs = {
+  main: {
+    throughputData: JSON.parse(JSON.stringify(csvThroughput)),
+    backlog: 17, historyCount: 4, histChartInst: null, tpChartInst: null
+  }
+};
+
+// ─── Monte Carlo logic ────────────────────────────────────────────
+function getActiveThroughput(t) {
+  const n = Math.min(t.historyCount, t.throughputData.length);
+  return t.throughputData.slice(t.throughputData.length - n).map(r => r.val).filter(v => v > 0);
+}
+function getTargetDate(pfx) {
+  const v = document.getElementById(pfx + '-targetDate').value;
+  if (!v) return new Date(2026, 5, 30);
+  const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d);
+}
+function updateDateHint(pfx) {
+  const target = getTargetDate(pfx);
+  if (target <= startDate) { document.getElementById(pfx+'-sprintHint').textContent = 'date before sprint 2026.12 start'; return; }
+  const sc = Math.floor((target - startDate) / (sprintDays * 86400000));
+  document.getElementById(pfx+'-sprintHint').textContent = sc > 0 ? `${sc} ${sc===1?'sprint':'sprints'} · last: ${sprintLabel(sc-1)}` : 'less than 1 sprint';
+}
+
+function runSimulation(pfx) {
+  const t = tabs[pfx];
+  const tp = getActiveThroughput(t);
+  if (!tp.length) return;
+
+  const simResults = [];
+  for (let i = 0; i < N; i++) {
+    let done = 0, sprint = 0;
+    while (done < t.backlog) { done += randomSample(tp); sprint++; }
+    simResults.push(sprint);
+  }
+  simResults.sort((a,b) => a-b);
+
+  const p75off = percentile(simResults,75), p85off = percentile(simResults,85), p99off = percentile(simResults,99);
+  const target = getTargetDate(pfx);
+  const tsc = Math.floor((target - startDate) / (sprintDays * 86400000));
+  const tSim = [];
+  for (let i = 0; i < N; i++) {
+    let done = 0;
+    for (let s = 0; s < tsc; s++) done += randomSample(tp);
+    tSim.push(Math.min(done, t.backlog));
+  }
+  tSim.sort((a,b) => a-b);
+  const tP95 = tsc > 0 ? percentile(tSim, 5) : 0;
+  const avgTP = (tp.reduce((a,b)=>a+b,0)/tp.length).toFixed(1);
+  const medTP = median(tp).toFixed(1);
+
+  document.getElementById(pfx+'-metricGrid').innerHTML = `
+    <div class="metric"><div class="label">Avg throughput</div><div class="value">${avgTP}</div><div class="sub2">${Math.min(t.historyCount,t.throughputData.length)} last sprints</div></div>
+    <div class="metric"><div class="label">Median throughput</div><div class="value">${medTP}</div><div class="sub2">per sprint</div></div>
+    <div class="metric"><div class="label">Backlog items</div><div class="value">${t.backlog}</div><div class="sub2">remaining</div></div>
+    <div class="metric"><div class="label">Total throughput</div><div class="value">${tp.reduce((a,b)=>a+b,0)}</div><div class="sub2">${Math.min(t.historyCount,t.throughputData.length)} sprints · avg ${avgTP}</div></div>
+    <div class="metric"><div class="label">Sprints to date</div><div class="value">${Math.max(0,tsc)}</div><div class="sub2">${tsc>0?'ends in '+sprintLabel(tsc-1):'none'}</div></div>
+  `;
+
+  const maxOff = p99off||1, bw = o => Math.round((o/maxOff)*100);
+  document.getElementById(pfx+'-completionRows').innerHTML = `
+    <div class="pct-row"><span class="pct-badge p75c">75%</span><div class="bar-wrap"><div class="bar-fill" style="width:${bw(p75off)}%;background:#ee7766;"></div></div><span class="pct-date">${formatDate(sprintEndDate(p75off))}</span><span class="pct-sprint">${sprintLabel(p75off)}</span></div>
+    <div class="pct-row"><span class="pct-badge p85c">85%</span><div class="bar-wrap"><div class="bar-fill" style="width:${bw(p85off)}%;background:#c76f37;"></div></div><span class="pct-date">${formatDate(sprintEndDate(p85off))}</span><span class="pct-sprint">${sprintLabel(p85off)}</span></div>
+    <div class="pct-row"><span class="pct-badge p99c">99%</span><div class="bar-wrap"><div class="bar-fill" style="width:${bw(p99off)}%;background:#0b707d;"></div></div><span class="pct-date">${formatDate(sprintEndDate(p99off))}</span><span class="pct-sprint">${sprintLabel(p99off)}</span></div>
+  `;
+
+  if (tsc <= 0) {
+    document.getElementById(pfx+'-juneNum').textContent = '—';
+    document.getElementById(pfx+'-juneSprints').textContent = '';
+    document.getElementById(pfx+'-juneMsg').innerHTML = '<div class="june-warn">Selected date is before the end of the current sprint.</div>';
+    document.getElementById(pfx+'-phraseSuggestion').innerHTML = '';
+  } else {
+    document.getElementById(pfx+'-juneNum').textContent = tP95;
+    document.getElementById(pfx+'-juneSprints').textContent = `${tsc} ${tsc===1?'sprint':'sprints'} · last: ${sprintLabel(tsc-1)}`;
+    document.getElementById(pfx+'-juneMsg').innerHTML = tP95 >= t.backlog ? '<div class="june-ok">The entire backlog will likely be completed before this date.</div>' : '';
+    const tDate = target.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    document.getElementById(pfx+'-phraseSuggestion').innerHTML = `<div class="phrase-box">
+      <div class="phrase"><div class="q">💬 Say to your manager:</div><div class="a">"By ${tDate} we can confidently deliver ${tP95} items — 95% confidence forecast."</div></div>
+      <div class="phrase"><div class="q">💬 Say to your team:</div><div class="a">"We have ${tsc} sprint${tsc===1?'':'s'} to ${tDate}. At 95% confidence, target ${tP95} backlog items."</div></div>
+    </div>`;
+  }
+
+  const sc = {}; simResults.forEach(s => { sc[s] = (sc[s]||0)+1; });
+  const sk = Object.keys(sc).map(Number).sort((a,b)=>a-b);
+  const hLabels = sk.map(s => sprintLabel(s));
+  const hData = sk.map(s => +((sc[s]||0)/N*100).toFixed(1));
+  const hColors = sk.map(s => s <= p75off ? '#ee7766' : s <= p85off ? '#c76f37' : '#0b707d');
+  let cumSum = 0;
+  const cumData = sk.map(s => { cumSum += ((sc[s]||0)/N*100); return +cumSum.toFixed(1); });
+
+  if (t.histChartInst) {
+    t.histChartInst.data.labels = hLabels;
+    t.histChartInst.data.datasets[0].data = hData;
+    t.histChartInst.data.datasets[0].backgroundColor = hColors;
+    t.histChartInst.data.datasets[1].data = cumData;
+    t.histChartInst.update();
+  } else {
+    t.histChartInst = new Chart(document.getElementById(pfx+'-histChart'), {
+      type:'bar', data:{labels:hLabels, datasets:[
+        {label:'% finishing this sprint',data:hData,backgroundColor:hColors,borderWidth:0,borderRadius:2,yAxisID:'y'},
+        {label:'Cumulative confidence',data:cumData,type:'line',borderColor:'#005f85',backgroundColor:'rgba(0,95,133,0.08)',borderWidth:2,pointBackgroundColor:'#005f85',pointRadius:3,pointHoverRadius:5,tension:0.3,fill:true,yAxisID:'y2'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{callbacks:{
+          title:items=>`Sprint ${items[0].label}`,
+          label:ctx=>ctx.datasetIndex===0?`${ctx.parsed.y.toFixed(1)}% finish here`:`${ctx.parsed.y.toFixed(0)}% cumulative`,
+          afterBody:items=>{const c=items.find(i=>i.datasetIndex===1)?.parsed.y;if(!c)return[];if(c>=99)return['✅ 99%+ — very safe'];if(c>=85)return['🟢 85%+ — safe commitment'];if(c>=75)return['🟡 75%+ — optimistic'];return['🔴 <75% — risky'];}
+        }}},
+        scales:{
+          x:{ticks:{font:{size:11},maxRotation:45,color:'#4c778b',autoSkip:false},grid:{display:false}},
+          y:{position:'left',ticks:{font:{size:11},color:'#4c778b',callback:v=>v+'%'},grid:{color:'rgba(76,119,139,0.2)'},title:{display:true,text:'% finishing this sprint',font:{size:10},color:'#4c778b'}},
+          y2:{position:'right',min:0,max:100,ticks:{font:{size:11},color:'#005f85',callback:v=>v+'%'},grid:{display:false},title:{display:true,text:'Cumulative confidence',font:{size:10},color:'#005f85'}}
+        }
+      }
+    });
+  }
+
+  const tableRows = sk.map((s,i)=>{
+    const conf=cumData[i];
+    const bg=conf>=85?'#b4dac3;color:#316c59':conf>=75?'#fef3dc;color:#c76f37':'#fde8e4;color:#c76f37';
+    return`<tr><td style="padding:4px 10px;font-size:12px;color:#4c778b;">${sprintLabel(s)}</td><td style="padding:4px 10px;font-size:12px;color:#003755;">${sprintEndDate(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td><td style="padding:4px 10px;font-size:12px;color:#4c778b;">${hData[i].toFixed(1)}%</td><td style="padding:4px 8px;"><span style="display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:5px;background:${bg};">${conf.toFixed(0)}%</span></td></tr>`;
+  }).join('');
+  document.getElementById(pfx+'-confTable').innerHTML=`<table style="width:100%;border-collapse:collapse;"><thead><tr>
+    <th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Sprint</th>
+    <th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">End date</th>
+    <th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Simulations finishing here</th>
+    <th style="padding:4px 8px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Cumulative confidence</th>
+  </tr><tbody>${tableRows}</tbody></table>`;
+
+  updateTpChart(pfx);
+}
+
+function updateTpChart(pfx) {
+  const t = tabs[pfx];
+  const ac = Math.min(t.historyCount, t.throughputData.length);
+  const rev = [...t.throughputData].reverse();
+  const labels = rev.map(r=>r.sprint), vals = rev.map(r=>r.val);
+  const colors = vals.map((v,i) => i<ac ? (v>=5?'#005f85':'#4dbdc6') : 'rgba(76,119,139,0.25)');
+  if (t.tpChartInst) {
+    t.tpChartInst.data.labels=labels; t.tpChartInst.data.datasets[0].data=vals; t.tpChartInst.data.datasets[0].backgroundColor=colors; t.tpChartInst.update();
+  } else {
+    t.tpChartInst = new Chart(document.getElementById(pfx+'-throughputChart'),{type:'bar',data:{labels,datasets:[{label:'Items',data:vals,backgroundColor:colors,borderWidth:0,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} items`}}},scales:{x:{ticks:{font:{size:11},color:'#4c778b',autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:11},color:'#4c778b',stepSize:1},grid:{color:'rgba(76,119,139,0.2)'}}}}});
+  }
+}
+
+function renderTable(pfx) {
+  const t = tabs[pfx];
+  const ac = Math.min(t.historyCount, t.throughputData.length);
+  const tbody = document.getElementById(pfx+'-tpBody');
+  tbody.innerHTML = '';
+  [...t.throughputData].map((r,i)=>({...r,origIdx:i})).reverse().forEach((row,ri) => {
+    const isActive = ri < ac, tr = document.createElement('tr');
+    tr.className = isActive ? '' : 'excluded';
+    tr.innerHTML = `<td><input type="text" value="${row.sprint}" data-pfx="${pfx}" data-idx="${row.origIdx}" data-field="sprint">${isActive?'<span class="used-badge">in use</span>':'<span class="excluded-badge">excluded</span>'}</td><td><input type="number" value="${row.val}" min="0" max="99" data-pfx="${pfx}" data-idx="${row.origIdx}" data-field="val"></td><td class="del-cell"><button data-pfx="${pfx}" data-idx="${row.origIdx}" title="Delete"><i class="ti ti-trash" style="font-size:14px;pointer-events:none;"></i></button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const px=e.target.dataset.pfx,i=+e.target.dataset.idx,f=e.target.dataset.field;
+      if(f==='sprint') tabs[px].throughputData[i].sprint=e.target.value.trim();
+      if(f==='val') tabs[px].throughputData[i].val=Math.max(0,parseInt(e.target.value)||0);
+      updateHistorySliderMax(px); runSimulation(px);
+    });
+  });
+  tbody.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click',()=>{const px=btn.dataset.pfx;tabs[px].throughputData.splice(+btn.dataset.idx,1);updateHistorySliderMax(px);renderTable(px);runSimulation(px);});
+  });
+}
+
+function updateHistorySliderMax(pfx) {
+  const t=tabs[pfx],s=document.getElementById(pfx+'-historySlider'),max=Math.max(1,t.throughputData.length);
+  s.max=max; if(t.historyCount>max)t.historyCount=max; s.value=t.historyCount; updateHistoryLabel(pfx);
+}
+function updateHistoryLabel(pfx) {
+  const a=Math.min(tabs[pfx].historyCount,tabs[pfx].throughputData.length);
+  document.getElementById(pfx+'-historyVal').textContent=`${a} last sprints`;
+}
+function nextSprintName(pfx) {
+  const td=tabs[pfx].throughputData; if(!td.length)return'2026.12';
+  const last=td[td.length-1].sprint,m=last.match(/(\d+)\.(\d+)/);
+  return m?`${+m[1]}.${String(+m[2]+1).padStart(2,'0')}`:last+'_new';
+}
+
+// ─── Wire main tab ────────────────────────────────────────────────
+['main'].forEach(pfx => {
+  document.getElementById(pfx+'-historySlider').addEventListener('input',e=>{tabs[pfx].historyCount=+e.target.value;updateHistoryLabel(pfx);renderTable(pfx);runSimulation(pfx);});
+  document.getElementById(pfx+'-addRowBtn').addEventListener('click',()=>{tabs[pfx].throughputData.push({sprint:nextSprintName(pfx),val:0});updateHistorySliderMax(pfx);renderTable(pfx);runSimulation(pfx);});
+  document.getElementById(pfx+'-backlogSlider').addEventListener('input',e=>{tabs[pfx].backlog=+e.target.value;document.getElementById(pfx+'-backlogVal').textContent=tabs[pfx].backlog;runSimulation(pfx);});
+  document.getElementById(pfx+'-targetDate').addEventListener('change',()=>{updateDateHint(pfx);runSimulation(pfx);});
+  updateDateHint(pfx); renderTable(pfx); runSimulation(pfx);
+});
+
+// ─── Scatterplot tab ──────────────────────────────────────────────
+function buildScatterplot() {
+  const cts = csvItems.map(d => d.ct);
+  const med = median(cts);
+  const p85 = percentile([...cts].sort((a,b)=>a-b), 85);
+  const p95 = percentile([...cts].sort((a,b)=>a-b), 95);
+
+  // Sprint colours
+  const sprintColors = {
+    '2026.01':'#4dbdc6','2026.02':'#005f85','2026.03':'#0b707d',
+    '2026.04':'#316c59','2026.05':'#6e8269','2026.07':'#c76f37',
+    '2026.08':'#ee7766','2026.09':'#fcca83','2026.10':'#4c778b','2026.11':'#003755'
+  };
+
+  // Metrics
+  document.getElementById('scatter-metrics').innerHTML = `
+    <div class="metric"><div class="label">Items analysed</div><div class="value">${cts.length}</div><div class="sub2">done, with cycle time</div></div>
+    <div class="metric"><div class="label">Median cycle time</div><div class="value">${med}</div><div class="sub2">days</div></div>
+    <div class="metric"><div class="label">85th percentile</div><div class="value">${p85}</div><div class="sub2">days (85% ≤ this)</div></div>
+    <div class="metric"><div class="label">95th percentile</div><div class="value">${p95}</div><div class="sub2">days (95% ≤ this)</div></div>
+    <div class="metric"><div class="label">Min / Max</div><div class="value">${Math.min(...cts)} / ${Math.max(...cts)}</div><div class="sub2">days</div></div>
+  `;
+
+  // Scatter datasets — one per sprint for colour coding
+  const sprintGroups = {};
+  csvItems.forEach(d => {
+    if (!sprintGroups[d.sprint]) sprintGroups[d.sprint] = [];
+    sprintGroups[d.sprint].push({x: d.closed, y: d.ct, id: d.id});
+  });
+
+  const scatterDatasets = Object.entries(sprintGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([sp, pts]) => ({
+    label: sp,
+    data: pts,
+    backgroundColor: (sprintColors[sp] || '#4c778b') + 'cc',
+    borderColor: sprintColors[sp] || '#4c778b',
+    borderWidth: 1,
+    pointRadius: 7,
+    pointHoverRadius: 9,
+  }));
+
+  // Annotation lines
+  const allDates = csvItems.map(d => d.closed).sort();
+  const lineDataset = (val, color, label) => ({
+    label,
+    data: [{x: allDates[0], y: val}, {x: allDates[allDates.length-1], y: val}],
+    type: 'line',
+    borderColor: color,
+    borderWidth: 2,
+    borderDash: [5,4],
+    pointRadius: 0,
+    fill: false,
+  });
+
+  new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: { datasets: [
+      ...scatterDatasets,
+      lineDataset(med,   '#005f85', `Median (${med}d)`),
+      lineDataset(p85,   '#c76f37', `85th pct (${p85}d)`),
+      lineDataset(p95,   '#ee7766', `95th pct (${p95}d)`),
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: ctx => {
+            if (ctx.dataset.borderDash) return `${ctx.dataset.label}`;
+            return `ID ${ctx.raw.id} — ${ctx.raw.y} days (${ctx.raw.x})`;
+          }
+        }}
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'month', displayFormats: { month: 'MMM yy' } },
+          ticks: { font: { size: 11 }, color: '#4c778b' },
+          grid: { color: 'rgba(76,119,139,0.15)' },
+          title: { display: true, text: 'Close date', font: { size: 11 }, color: '#4c778b' }
+        },
+        y: {
+          ticks: { font: { size: 11 }, color: '#4c778b' },
+          grid: { color: 'rgba(76,119,139,0.15)' },
+          title: { display: true, text: 'Cycle time (days)', font: { size: 11 }, color: '#4c778b' }
+        }
+      }
+    }
+  });
+
+  // Legend
+  const legendItems = Object.entries(sprintGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([sp]) =>
+    `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px;color:#4c778b;"><span style="width:10px;height:10px;border-radius:50%;background:${sprintColors[sp]||'#4c778b'};display:inline-block;"></span>${sp}</span>`
+  ).join('');
+  document.getElementById('scatter-pct-legend').innerHTML = `
+    <div style="margin-bottom:6px;display:flex;flex-wrap:wrap;">${legendItems}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#4c778b;">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;background:#005f85;border-top:2px dashed #005f85;display:inline-block;"></span>Median ${med}d</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;border-top:2px dashed #c76f37;display:inline-block;"></span>85th pct ${p85}d</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;border-top:2px dashed #ee7766;display:inline-block;"></span>95th pct ${p95}d</span>
+    </div>`;
+
+  // Median per sprint bar chart
+  const sprintMedians = {};
+  Object.entries(sprintGroups).forEach(([sp, pts]) => {
+    sprintMedians[sp] = median(pts.map(p => p.y));
+  });
+  const spKeys = Object.keys(sprintMedians).sort();
+  new Chart(document.getElementById('medianChart'), {
+    type: 'bar',
+    data: { labels: spKeys, datasets: [{
+      label: 'Median cycle time (days)',
+      data: spKeys.map(k => sprintMedians[k]),
+      backgroundColor: spKeys.map(k => sprintColors[k] || '#4c778b'),
+      borderWidth: 0, borderRadius: 3
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `Median: ${ctx.parsed.y} days` } } },
+      scales: {
+        x: { ticks: { font: { size: 11 }, color: '#4c778b', autoSkip: false, maxRotation: 45 }, grid: { display: false } },
+        y: { ticks: { font: { size: 11 }, color: '#4c778b' }, grid: { color: 'rgba(76,119,139,0.2)' },
+             title: { display: true, text: 'Median (days)', font: { size: 10 }, color: '#4c778b' } }
+      }
+    }
+  });
+
+  // Detail table
+  const sortedItems = [...csvItems].sort((a,b) => a.closed.localeCompare(b.closed));
+  const rows = sortedItems.map(d => {
+    const flag = d.ct > p95 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fde8e4;color:#c76f37;margin-left:4px;">outlier</span>` :
+                 d.ct > p85 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fef3dc;color:#c76f37;margin-left:4px;">&gt;85th</span>` : '';
+    const ctColor = d.ct > p95 ? '#c76f37' : d.ct > p85 ? '#c76f37' : '#003755';
+    return `<tr>
+      <td style="padding:5px 10px;font-size:12px;color:#4c778b;">${d.id}</td>
+      <td style="padding:5px 10px;font-size:12px;color:#4c778b;">${d.sprint}</td>
+      <td style="padding:5px 10px;font-size:12px;color:#4c778b;">${new Date(d.closed).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td style="padding:5px 10px;font-size:13px;font-weight:500;color:${ctColor};">${d.ct}d${flag}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('scatter-table').innerHTML = `<table style="width:100%;border-collapse:collapse;">
+    <thead><tr>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">ID</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Sprint</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Closed</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Cycle time</th>
+    </tr></thead><tbody>${rows}</tbody>
+  </table>`;
+}
+
+buildScatterplot();
+</script>
+</body>
+</html>
