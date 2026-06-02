@@ -6,7 +6,7 @@
 <title>Monte Carlo — delivery forecast</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
+  *,*::before,*::after { box-sizing: border-box; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #dbe4e8; color: #003755; margin: 0; padding: 0; }
   .page-header { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 0; }
   h1.title { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
@@ -84,10 +84,21 @@
   .phrase { background: #eef5f7; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
   .phrase .q { color: #4c778b; margin-bottom: 3px; }
   .phrase .a { color: #003755; font-weight: 500; }
-  /* Scatterplot tab */
-  .scatter-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 1.5rem; }
-  .pct-line { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
-  .pct-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  /* Filters */
+  .filter-card { background: #eef5f7; border-radius: 8px; padding: 12px 16px; margin-bottom: 1rem; }
+  .filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .filter-label { font-size: 12px; color: #4c778b; white-space: nowrap; }
+  .filter-select { font-size: 13px; padding: 5px 10px; border: 0.5px solid #a8bfc7; border-radius: 6px; background: #fff; color: #003755; cursor: pointer; min-width: 110px; }
+  .filter-select:focus { outline: none; border-color: #005f85; }
+  .multiselect { position: relative; }
+  .multiselect-btn { font-size: 13px; padding: 5px 10px; border: 0.5px solid #a8bfc7; border-radius: 6px; background: #fff; color: #003755; cursor: pointer; min-width: 180px; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .multiselect-btn:focus, .multiselect-btn.open { outline: none; border-color: #005f85; }
+  .multiselect-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 260px; overflow-y: auto; background: #fff; border: 0.5px solid #a8bfc7; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,55,85,0.12); z-index: 20; padding: 6px; }
+  .multiselect-dropdown.open { display: block; }
+  .multiselect-dropdown label { display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: 13px; color: #003755; cursor: pointer; border-radius: 4px; }
+  .multiselect-dropdown label:hover { background: #eef5f7; }
+  .multiselect-dropdown input[type=checkbox] { accent-color: #005f85; cursor: pointer; margin: 0; }
+  .multiselect-divider { height: 1px; background: #c8d8de; margin: 4px 6px; }
   @media (max-width: 560px) { .phrase-box { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -95,12 +106,13 @@
 
 <div class="page-header">
   <h1 class="title"><i class="ti ti-chart-line" style="font-size:18px;vertical-align:-2px;margin-right:6px"></i>Monte Carlo — delivery forecast</h1>
-  <p class="sub">10,000 iteration simulation · Current sprint: 2026.12 (start May 27) · Sprint: 2 weeks · Data: Contract Integration Stories</p>
+  <p class="sub">10,000 iteration simulation · Current sprint: 2026.12 (start May 27) · Sprint: 2 weeks</p>
 </div>
 
 <div class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('main',this)"><i class="ti ti-flag" style="font-size:13px;vertical-align:-1px;margin-right:5px"></i>Main initiative</button>
   <button class="tab-btn" onclick="switchTab('scatter',this)"><i class="ti ti-chart-dots" style="font-size:13px;vertical-align:-1px;margin-right:5px"></i>Scatterplot</button>
+  <button class="tab-btn" onclick="switchTab('xmr',this)"><i class="ti ti-trending-up" style="font-size:13px;vertical-align:-1px;margin-right:5px"></i>XmR</button>
 </div>
 
 <!-- ═══ TAB: Main initiative ═══ -->
@@ -108,7 +120,7 @@
 <div class="dash">
   <div class="tip-box">
     <strong><i class="ti ti-bulb" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>How to read this forecast</strong>
-    Monte Carlo simulation runs 10,000 scenarios sampling historical throughput. Use <strong>75%</strong> for optimistic planning, <strong>85%</strong> for stakeholder commitments, <strong>99%</strong> for near-certainty. Throughput data sourced from the last 4 completed sprints (2026.08–2026.11).
+    Monte Carlo simulation runs 10,000 scenarios sampling historical throughput. Use <strong>75%</strong> for optimistic planning, <strong>85%</strong> for stakeholder commitments, <strong>99%</strong> for near-certainty. Throughput sourced from the last 4 completed sprints (2026.08–2026.11).
   </div>
   <div class="ctrl-row">
     <label><i class="ti ti-list-check" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>Backlog items</label>
@@ -149,7 +161,7 @@
     <div id="main-confTable" style="margin-top:14px;overflow-x:auto;"></div>
   </div>
   <div class="card">
-    <div class="card-title"><i class="ti ti-chart-bar" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Historical throughput <span style="font-size:12px;font-weight:400;color:#4c778b;">(sourced from CSV — done items per sprint)</span></div>
+    <div class="card-title"><i class="ti ti-chart-bar" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Historical throughput <span style="font-size:12px;font-weight:400;color:#4c778b;">(done items per sprint)</span></div>
     <div class="history-control">
       <label><i class="ti ti-history" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Sprints included</label>
       <input type="range" id="main-historySlider" min="1" max="4" value="4" step="1">
@@ -159,7 +171,7 @@
     <table class="tp-table"><thead><tr><th>Sprint</th><th>Items done</th><th></th></tr></thead><tbody id="main-tpBody"></tbody></table>
     <div class="inline-tip" style="margin-top:10px;margin-bottom:6px;">
       <i class="ti ti-info-circle" style="font-size:14px;"></i>
-      <span>Throughput counts come directly from closed items in your CSV. Dark bars = high velocity (≥5 items). Adjust the window to weight recent sprints more.</span>
+      <span>Throughput = closed items per sprint. Dark bars = high velocity (≥5 items). Adjust the window to weight recent sprints more.</span>
     </div>
     <button class="add-row-btn" id="main-addRowBtn"><i class="ti ti-plus" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>Add sprint</button>
   </div>
@@ -171,26 +183,39 @@
 <div class="dash">
   <div class="tip-box">
     <strong><i class="ti ti-bulb" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>Cycle time scatterplot — Done items only</strong>
-    Each dot is a completed work item plotted by its close date and cycle time (days from start to done). Horizontal percentile lines show the median (50%), 85th and 95th percentile cycle times — use these to answer <em>"how long does a typical item take?"</em>
+    Each dot is a completed work item plotted by close date and cycle time (days from start to done). Horizontal percentile lines show the median (50%), 85th and 95th percentile — use these to answer <em>"how long does a typical item take?"</em>
   </div>
-
-  <div class="scatter-metrics" id="scatter-metrics"></div>
-
+  <div class="filter-card">
+    <div class="filter-row">
+      <label class="filter-label"><i class="ti ti-calendar-time" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Closed in last</label>
+      <select id="scatter-dateFilter" class="filter-select">
+        <option value="0">All time</option>
+        <option value="30">30 days</option>
+        <option value="60">60 days</option>
+        <option value="90">90 days</option>
+        <option value="180">180 days</option>
+      </select>
+      <label class="filter-label"><i class="ti ti-filter" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Iterations</label>
+      <div class="multiselect" id="scatter-iterFilter">
+        <button type="button" class="multiselect-btn" onclick="toggleMultiSelect('scatter')"><span id="scatter-iterLabel">All iterations</span> <i class="ti ti-chevron-down" style="font-size:12px;"></i></button>
+        <div class="multiselect-dropdown" id="scatter-iterDropdown"></div>
+      </div>
+    </div>
+  </div>
+  <div class="metric-grid" id="scatter-metrics"></div>
   <div class="card">
     <div class="card-title"><i class="ti ti-chart-dots" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Cycle time per item (days) — all sprints</div>
     <div style="position:relative;width:100%;height:340px;"><canvas id="scatterChart"></canvas></div>
     <div style="margin-top:10px;" id="scatter-pct-legend"></div>
   </div>
-
   <div class="card">
     <div class="card-title"><i class="ti ti-chart-bar" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Median cycle time per sprint</div>
     <div style="position:relative;width:100%;height:200px;"><canvas id="medianChart"></canvas></div>
     <div class="inline-tip" style="margin-top:10px;">
       <i class="ti ti-info-circle" style="font-size:14px;"></i>
-      <span>Median is more robust than average — a single outlier (like the 46-day item in 2026.07) won't skew it. Use the median as your <strong style="color:#003755;">SLA baseline</strong> when estimating single item delivery.</span>
+      <span>Median is more robust than average — a single outlier won't skew it. Use the median as your <strong style="color:#003755;">SLA baseline</strong> when estimating single item delivery.</span>
     </div>
   </div>
-
   <div class="card">
     <div class="card-title"><i class="ti ti-table" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Item detail</div>
     <div style="overflow-x:auto;" id="scatter-table"></div>
@@ -198,10 +223,98 @@
 </div>
 </div>
 
+<!-- ═══ TAB: XmR ═══ -->
+<div id="tab-xmr" class="tab-panel">
+<div class="dash">
+  <div class="tip-box">
+    <strong><i class="ti ti-trending-up" style="font-size:14px;vertical-align:-2px;margin-right:5px"></i>XmR Control Chart — Cycle Time with Median baseline</strong>
+    The XmR chart uses the <strong>median</strong> (not mean) as the centre line — robust against outliers. Control limits are set at <strong>±3.14 × average moving range</strong> from the median. Each zone (A, B, C) is 1/3 of that distance. Four Western Electric rules detect signals of non-random variation.
+  </div>
+  <div class="filter-card">
+    <div class="filter-row">
+      <label class="filter-label"><i class="ti ti-calendar-time" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Closed in last</label>
+      <select id="xmr-dateFilter" class="filter-select">
+        <option value="0">All time</option>
+        <option value="30">30 days</option>
+        <option value="60">60 days</option>
+        <option value="90">90 days</option>
+        <option value="180">180 days</option>
+      </select>
+      <label class="filter-label"><i class="ti ti-filter" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Iterations</label>
+      <div class="multiselect" id="xmr-iterFilter">
+        <button type="button" class="multiselect-btn" onclick="toggleMultiSelect('xmr')"><span id="xmr-iterLabel">All iterations</span> <i class="ti ti-chevron-down" style="font-size:12px;"></i></button>
+        <div class="multiselect-dropdown" id="xmr-iterDropdown"></div>
+      </div>
+    </div>
+  </div>
+  <div class="metric-grid" id="xmr-metrics"></div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>X Chart — Individual cycle times (days)<span class="help-icon">?<span class="tooltip-text">Each point is one work item's cycle time, plotted by close order. CL = median. Zones A/B/C split the space between CL and UCL/LCL into equal thirds.</span></span></div>
+    <div style="position:relative;width:100%;height:300px;"><canvas id="xChart"></canvas></div>
+    <div id="xmr-zone-legend" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:#4c778b;"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>mR Chart — Moving Range (day-to-day variation)<span class="help-icon">?<span class="tooltip-text">Moving range = |current − previous|. Shows how much cycle time jumps between consecutive items. UCL_mR = 3.27 × avg MR.</span></span></div>
+    <div style="position:relative;width:100%;height:200px;"><canvas id="mrChart"></canvas></div>
+  </div>
+  <div class="card" id="xmr-rules-card">
+    <div class="card-title"><i class="ti ti-alert-triangle" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Western Electric rules</div>
+    <p class="section-tip">All four rules are listed below. Active signals (detected in your current data) are highlighted in <strong style="color:#c76f37;">red</strong>. Inactive rules are dimmed.</p>
+    <div id="xmr-rules"></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><i class="ti ti-eye-off" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Include / exclude items<span class="help-icon">?<span class="tooltip-text">Uncheck an item to temporarily remove it from the XmR analysis. Useful for excluding known outliers without losing them from the dataset. The exclusion is local to this tab.</span></span></div>
+    <p class="section-tip">Temporarily exclude items from the calculation (e.g. known one-off outliers). Items stay in the source dataset and other tabs are unaffected.</p>
+    <div style="overflow-x:auto;" id="xmr-item-table"></div>
+  </div>
+</div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
-// ─── Tab switching ────────────────────────────────────────────────
+// ═══ Shared dataset (single source of truth) ════════════════════════
+const SOURCE = {
+  // All Done items with cycle time. Source: work items extract, June 2026.
+  items: [
+    {id:'243095',sprint:'2026.01',ct:2, date:'2025-12-31'},
+    {id:'243018',sprint:'2026.01',ct:12,date:'2025-12-31'},
+    {id:'243094',sprint:'2026.02',ct:1, date:'2026-01-09'},
+    {id:'243085',sprint:'2026.02',ct:6, date:'2026-01-14'},
+    {id:'243081',sprint:'2026.02',ct:6, date:'2026-01-20'},
+    {id:'240411',sprint:'2026.03',ct:15,date:'2026-01-23'},
+    {id:'243003',sprint:'2026.03',ct:13,date:'2026-02-03'},
+    {id:'242941',sprint:'2026.04',ct:9, date:'2026-02-13'},
+    {id:'242876',sprint:'2026.04',ct:9, date:'2026-02-13'},
+    {id:'246763',sprint:'2026.05',ct:11,date:'2026-03-03'},
+    {id:'240357',sprint:'2026.07',ct:4, date:'2026-03-24'},
+    {id:'246243',sprint:'2026.07',ct:14,date:'2026-04-01'},
+    {id:'246242',sprint:'2026.08',ct:2, date:'2026-04-03'},
+    {id:'246311',sprint:'2026.08',ct:7, date:'2026-04-08'},
+    {id:'246130',sprint:'2026.07',ct:46,date:'2026-04-14'},
+    {id:'246388',sprint:'2026.09',ct:13,date:'2026-04-20'},
+    {id:'250452',sprint:'2026.09',ct:7, date:'2026-04-24'},
+    {id:'251179',sprint:'2026.09',ct:4, date:'2026-04-27'},
+    {id:'251123',sprint:'2026.09',ct:7, date:'2026-04-28'},
+    {id:'246272',sprint:'2026.09',ct:13,date:'2026-04-29'},
+    {id:'248993',sprint:'2026.09',ct:16,date:'2026-04-29'},
+    {id:'251676',sprint:'2026.10',ct:7, date:'2026-05-04'},
+    {id:'240507',sprint:'2026.10',ct:9, date:'2026-05-06'},
+    {id:'252692',sprint:'2026.11',ct:4, date:'2026-05-25'},
+    {id:'247525',sprint:'2026.11',ct:13,date:'2026-05-26'},
+  ],
+  remainingBacklog: 17  // count of non-done items in source
+};
+
+// Derive throughput per sprint from source data
+function deriveThroughput(sprints) {
+  return sprints.map(sp => ({
+    sprint: sp,
+    val: SOURCE.items.filter(d => d.sprint === sp).length
+  }));
+}
+
+// ═══ Helpers ════════════════════════════════════════════════════════
 function switchTab(id, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -209,7 +322,6 @@ function switchTab(id, btn) {
   btn.classList.add('active');
 }
 
-// ─── Shared constants ─────────────────────────────────────────────
 const FIRST_SPRINT_NUM = 12, FIRST_SPRINT_YEAR = 2026;
 const startDate = new Date(2026, 4, 27);
 const sprintDays = 14, N = 10000;
@@ -221,60 +333,22 @@ function randomSample(arr) { return arr[Math.floor(Math.random() * arr.length)];
 function percentile(arr, p) { const idx = Math.ceil(arr.length * p / 100) - 1; return arr[Math.max(0, Math.min(arr.length - 1, idx))]; }
 function median(arr) { const s = [...arr].sort((a,b)=>a-b); const m = Math.floor(s.length/2); return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
 
-// ─── CSV data (pre-parsed, done items only) ───────────────────────
-const csvItems = [
-  {id:'246272', sprint:'2026.09', ct:13, closed:'2026-04-29'},
-  {id:'242941', sprint:'2026.04', ct:9,  closed:'2026-02-13'},
-  {id:'242876', sprint:'2026.04', ct:9,  closed:'2026-02-13'},
-  {id:'240411', sprint:'2026.03', ct:15, closed:'2026-01-23'},
-  {id:'243081', sprint:'2026.02', ct:6,  closed:'2026-01-20'},
-  {id:'243095', sprint:'2026.01', ct:2,  closed:'2025-12-31'},
-  {id:'243094', sprint:'2026.02', ct:1,  closed:'2026-01-09'},
-  {id:'251179', sprint:'2026.09', ct:4,  closed:'2026-04-27'},
-  {id:'252692', sprint:'2026.11', ct:4,  closed:'2026-05-25'},
-  {id:'243003', sprint:'2026.03', ct:13, closed:'2026-02-03'},
-  {id:'243018', sprint:'2026.01', ct:12, closed:'2025-12-31'},
-  {id:'251676', sprint:'2026.10', ct:7,  closed:'2026-05-04'},
-  {id:'243085', sprint:'2026.02', ct:6,  closed:'2026-01-14'},
-  {id:'251123', sprint:'2026.09', ct:7,  closed:'2026-04-28'},
-  {id:'246243', sprint:'2026.07', ct:14, closed:'2026-04-01'},
-  {id:'246388', sprint:'2026.09', ct:13, closed:'2026-04-20'},
-  {id:'246311', sprint:'2026.08', ct:7,  closed:'2026-04-08'},
-  {id:'246242', sprint:'2026.08', ct:2,  closed:'2026-04-03'},
-  {id:'250452', sprint:'2026.09', ct:7,  closed:'2026-04-24'},
-  {id:'240357', sprint:'2026.07', ct:4,  closed:'2026-03-24'},
-  {id:'248993', sprint:'2026.09', ct:16, closed:'2026-04-29'},
-  {id:'240507', sprint:'2026.10', ct:9,  closed:'2026-05-06'},
-  {id:'247525', sprint:'2026.11', ct:13, closed:'2026-05-26'},
-  {id:'246763', sprint:'2026.05', ct:11, closed:'2026-03-03'},
-  {id:'246130', sprint:'2026.07', ct:46, closed:'2026-04-14'},
-];
-
-// Throughput per sprint from CSV (last 4: 2026.08-2026.11)
-const csvThroughput = [
-  {sprint:'2026.08', val:2},
-  {sprint:'2026.09', val:6},
-  {sprint:'2026.10', val:2},
-  {sprint:'2026.11', val:2},
-];
-
-// ─── Main initiative tab state ────────────────────────────────────
+// ═══ Main initiative tab ════════════════════════════════════════════
 const tabs = {
   main: {
-    throughputData: JSON.parse(JSON.stringify(csvThroughput)),
-    backlog: 17, historyCount: 4, histChartInst: null, tpChartInst: null
+    throughputData: deriveThroughput(['2026.08','2026.09','2026.10','2026.11']),
+    backlog: SOURCE.remainingBacklog, historyCount: 4, histChartInst: null, tpChartInst: null
   }
 };
 
-// ─── Monte Carlo logic ────────────────────────────────────────────
 function getActiveThroughput(t) {
   const n = Math.min(t.historyCount, t.throughputData.length);
   return t.throughputData.slice(t.throughputData.length - n).map(r => r.val).filter(v => v > 0);
 }
 function getTargetDate(pfx) {
-  const v = document.getElementById(pfx + '-targetDate').value;
-  if (!v) return new Date(2026, 5, 30);
-  const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d);
+  const v = document.getElementById(pfx+'-targetDate').value;
+  if (!v) return new Date(2026,5,30);
+  const [y,m,d] = v.split('-').map(Number); return new Date(y,m-1,d);
 }
 function updateDateHint(pfx) {
   const target = getTargetDate(pfx);
@@ -294,18 +368,14 @@ function runSimulation(pfx) {
     while (done < t.backlog) { done += randomSample(tp); sprint++; }
     simResults.push(sprint);
   }
-  simResults.sort((a,b) => a-b);
+  simResults.sort((a,b)=>a-b);
 
   const p75off = percentile(simResults,75), p85off = percentile(simResults,85), p99off = percentile(simResults,99);
   const target = getTargetDate(pfx);
   const tsc = Math.floor((target - startDate) / (sprintDays * 86400000));
   const tSim = [];
-  for (let i = 0; i < N; i++) {
-    let done = 0;
-    for (let s = 0; s < tsc; s++) done += randomSample(tp);
-    tSim.push(Math.min(done, t.backlog));
-  }
-  tSim.sort((a,b) => a-b);
+  for (let i = 0; i < N; i++) { let done = 0; for (let s = 0; s < tsc; s++) done += randomSample(tp); tSim.push(Math.min(done, t.backlog)); }
+  tSim.sort((a,b)=>a-b);
   const tP95 = tsc > 0 ? percentile(tSim, 5) : 0;
   const avgTP = (tp.reduce((a,b)=>a+b,0)/tp.length).toFixed(1);
   const medTP = median(tp).toFixed(1);
@@ -345,7 +415,7 @@ function runSimulation(pfx) {
   const sk = Object.keys(sc).map(Number).sort((a,b)=>a-b);
   const hLabels = sk.map(s => sprintLabel(s));
   const hData = sk.map(s => +((sc[s]||0)/N*100).toFixed(1));
-  const hColors = sk.map(s => s <= p75off ? '#ee7766' : s <= p85off ? '#c76f37' : '#0b707d');
+  const hColors = sk.map(s => s<=p75off?'#ee7766':s<=p85off?'#c76f37':'#0b707d');
   let cumSum = 0;
   const cumData = sk.map(s => { cumSum += ((sc[s]||0)/N*100); return +cumSum.toFixed(1); });
 
@@ -442,7 +512,6 @@ function nextSprintName(pfx) {
   return m?`${+m[1]}.${String(+m[2]+1).padStart(2,'0')}`:last+'_new';
 }
 
-// ─── Wire main tab ────────────────────────────────────────────────
 ['main'].forEach(pfx => {
   document.getElementById(pfx+'-historySlider').addEventListener('input',e=>{tabs[pfx].historyCount=+e.target.value;updateHistoryLabel(pfx);renderTable(pfx);runSimulation(pfx);});
   document.getElementById(pfx+'-addRowBtn').addEventListener('click',()=>{tabs[pfx].throughputData.push({sprint:nextSprintName(pfx),val:0});updateHistorySliderMax(pfx);renderTable(pfx);runSimulation(pfx);});
@@ -451,21 +520,155 @@ function nextSprintName(pfx) {
   updateDateHint(pfx); renderTable(pfx); runSimulation(pfx);
 });
 
-// ─── Scatterplot tab ──────────────────────────────────────────────
-function buildScatterplot() {
-  const cts = csvItems.map(d => d.ct);
-  const med = median(cts);
-  const p85 = percentile([...cts].sort((a,b)=>a-b), 85);
-  const p95 = percentile([...cts].sort((a,b)=>a-b), 95);
+// ═══ Shared filter state & helpers ══════════════════════════════════
+// Single shared filter state across Scatterplot and XmR tabs
+const sharedFilter = { days: 0, iterations: 'all' };
+const filters = new Proxy({}, {
+  get: () => sharedFilter
+});
 
-  // Sprint colours
+function getAllSprints() {
+  return [...new Set(SOURCE.items.map(d => d.sprint))].sort();
+}
+
+function applyFilters() {
+  const f = sharedFilter;
+  let result = [...SOURCE.items];
+  if (f.days > 0) {
+    const today = new Date('2026-06-02');
+    const cutoff = new Date(today.getTime() - f.days * 86400000);
+    result = result.filter(d => new Date(d.date) >= cutoff);
+  }
+  if (f.iterations !== 'all' && Array.isArray(f.iterations) && f.iterations.length > 0) {
+    result = result.filter(d => f.iterations.includes(d.sprint));
+  }
+  return result;
+}
+
+function buildIterationDropdown(pfx) {
+  const sprints = getAllSprints();
+  const f = sharedFilter;
+  const isAll = f.iterations === 'all';
+  const selected = isAll ? new Set(sprints) : new Set(f.iterations);
+  const html = `
+    <label style="font-weight:500;border-bottom:0.5px solid #c8d8de;margin-bottom:4px;padding-bottom:6px;">
+      <input type="checkbox" data-iter="__all__" ${isAll?'checked':''}> Select all
+    </label>
+    <div class="multiselect-divider"></div>
+    ${sprints.map(s => `<label><input type="checkbox" data-iter="${s}" ${selected.has(s)?'checked':''}> ${s}</label>`).join('')}
+  `;
+  document.getElementById(pfx + '-iterDropdown').innerHTML = html;
+
+  document.querySelectorAll(`#${pfx}-iterDropdown input[type=checkbox]`).forEach(cb => {
+    cb.addEventListener('change', e => {
+      const iter = e.target.dataset.iter;
+      if (iter === '__all__') {
+        sharedFilter.iterations = e.target.checked ? 'all' : [];
+      } else {
+        let current = sharedFilter.iterations === 'all' ? [...sprints] : [...sharedFilter.iterations];
+        if (e.target.checked) {
+          if (!current.includes(iter)) current.push(iter);
+        } else {
+          current = current.filter(s => s !== iter);
+        }
+        sharedFilter.iterations = current.length === sprints.length ? 'all' : current;
+      }
+      syncFilterUI();
+      rerunBothTabs();
+    });
+  });
+}
+
+function updateIterationLabel(pfx) {
+  const sprints = getAllSprints();
+  const f = sharedFilter;
+  let label;
+  if (f.iterations === 'all') label = 'All iterations';
+  else if (f.iterations.length === 0) label = 'None selected';
+  else if (f.iterations.length === sprints.length) label = 'All iterations';
+  else if (f.iterations.length === 1) label = f.iterations[0];
+  else label = `${f.iterations.length} iterations`;
+  document.getElementById(pfx + '-iterLabel').textContent = label;
+}
+
+function toggleMultiSelect(pfx) {
+  const dropdown = document.getElementById(pfx + '-iterDropdown');
+  const btn = document.querySelector(`#${pfx}-iterFilter .multiselect-btn`);
+  const open = dropdown.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  if (open) {
+    setTimeout(() => {
+      document.addEventListener('click', function close(e) {
+        if (!document.getElementById(pfx + '-iterFilter').contains(e.target)) {
+          dropdown.classList.remove('open');
+          btn.classList.remove('open');
+          document.removeEventListener('click', close);
+        }
+      });
+    }, 0);
+  }
+}
+
+function rerunTab(pfx) {
+  if (pfx === 'scatter') {
+    ['scatterChart','medianChart'].forEach(cid => { const c = Chart.getChart(cid); if(c) c.destroy(); });
+    buildScatterplot();
+  } else if (pfx === 'xmr') {
+    ['xChart','mrChart'].forEach(cid => { const c = Chart.getChart(cid); if(c) c.destroy(); });
+    buildXmR();
+  }
+}
+
+// Sync any filter change across both tabs
+function syncFilterUI() {
+  ['scatter','xmr'].forEach(pfx => {
+    const sel = document.getElementById(pfx + '-dateFilter');
+    if (sel) sel.value = String(sharedFilter.days);
+    buildIterationDropdown(pfx);
+    updateIterationLabel(pfx);
+  });
+}
+
+function rerunBothTabs() {
+  rerunTab('scatter');
+  rerunTab('xmr');
+}
+
+['scatter','xmr'].forEach(pfx => {
+  const sel = document.getElementById(pfx + '-dateFilter');
+  if (sel) {
+    sel.addEventListener('change', e => {
+      sharedFilter.days = +e.target.value;
+      syncFilterUI();
+      rerunBothTabs();
+    });
+  }
+  buildIterationDropdown(pfx);
+  updateIterationLabel(pfx);
+});
+
+// ═══ Scatterplot tab ════════════════════════════════════════════════
+function buildScatterplot() {
+  const items = applyFilters();
+  if (items.length === 0) {
+    document.getElementById('scatter-metrics').innerHTML = '<div class="metric" style="grid-column:1/-1;"><div class="label">No items match filters</div><div class="value">0</div><div class="sub2">adjust date or iteration filter above</div></div>';
+    ['scatterChart','medianChart'].forEach(cid => { const c = Chart.getChart(cid); if(c) c.destroy(); });
+    document.getElementById('scatter-pct-legend').innerHTML = '';
+    document.getElementById('scatter-table').innerHTML = '';
+    return;
+  }
+  const cts = items.map(d => d.ct);
+  const med = median(cts);
+  const sortedCts = [...cts].sort((a,b)=>a-b);
+  const p85 = percentile(sortedCts, 85);
+  const p95 = percentile(sortedCts, 95);
+
   const sprintColors = {
     '2026.01':'#4dbdc6','2026.02':'#005f85','2026.03':'#0b707d',
     '2026.04':'#316c59','2026.05':'#6e8269','2026.07':'#c76f37',
     '2026.08':'#ee7766','2026.09':'#fcca83','2026.10':'#4c778b','2026.11':'#003755'
   };
 
-  // Metrics
   document.getElementById('scatter-metrics').innerHTML = `
     <div class="metric"><div class="label">Items analysed</div><div class="value">${cts.length}</div><div class="sub2">done, with cycle time</div></div>
     <div class="metric"><div class="label">Median cycle time</div><div class="value">${med}</div><div class="sub2">days</div></div>
@@ -474,74 +677,43 @@ function buildScatterplot() {
     <div class="metric"><div class="label">Min / Max</div><div class="value">${Math.min(...cts)} / ${Math.max(...cts)}</div><div class="sub2">days</div></div>
   `;
 
-  // Scatter datasets — one per sprint for colour coding
   const sprintGroups = {};
-  csvItems.forEach(d => {
+  items.forEach(d => {
     if (!sprintGroups[d.sprint]) sprintGroups[d.sprint] = [];
-    sprintGroups[d.sprint].push({x: d.closed, y: d.ct, id: d.id});
+    sprintGroups[d.sprint].push({x: d.date, y: d.ct, id: d.id});
   });
 
-  const scatterDatasets = Object.entries(sprintGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([sp, pts]) => ({
-    label: sp,
-    data: pts,
-    backgroundColor: (sprintColors[sp] || '#4c778b') + 'cc',
-    borderColor: sprintColors[sp] || '#4c778b',
-    borderWidth: 1,
-    pointRadius: 7,
-    pointHoverRadius: 9,
+  const scatterDatasets = Object.entries(sprintGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([sp,pts]) => ({
+    label: sp, data: pts,
+    backgroundColor: (sprintColors[sp]||'#4c778b') + 'cc',
+    borderColor: sprintColors[sp]||'#4c778b',
+    borderWidth: 1, pointRadius: 7, pointHoverRadius: 9,
   }));
 
-  // Annotation lines
-  const allDates = csvItems.map(d => d.closed).sort();
+  const allDates = items.map(d => d.date).sort();
   const lineDataset = (val, color, label) => ({
-    label,
-    data: [{x: allDates[0], y: val}, {x: allDates[allDates.length-1], y: val}],
-    type: 'line',
-    borderColor: color,
-    borderWidth: 2,
-    borderDash: [5,4],
-    pointRadius: 0,
-    fill: false,
+    label, data: [{x:allDates[0],y:val},{x:allDates[allDates.length-1],y:val}],
+    type:'line', borderColor:color, borderWidth:2, borderDash:[5,4], pointRadius:0, fill:false,
   });
 
   new Chart(document.getElementById('scatterChart'), {
-    type: 'scatter',
-    data: { datasets: [
-      ...scatterDatasets,
-      lineDataset(med,   '#005f85', `Median (${med}d)`),
-      lineDataset(p85,   '#c76f37', `85th pct (${p85}d)`),
-      lineDataset(p95,   '#ee7766', `95th pct (${p95}d)`),
+    type:'scatter',
+    data:{datasets:[...scatterDatasets,
+      lineDataset(med,'#005f85',`Median (${med}d)`),
+      lineDataset(p85,'#c76f37',`85th pct (${p85}d)`),
+      lineDataset(p95,'#ee7766',`95th pct (${p95}d)`),
     ]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'nearest', intersect: true },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: {
-          label: ctx => {
-            if (ctx.dataset.borderDash) return `${ctx.dataset.label}`;
-            return `ID ${ctx.raw.id} — ${ctx.raw.y} days (${ctx.raw.x})`;
-          }
-        }}
-      },
-      scales: {
-        x: {
-          type: 'time',
-          time: { unit: 'month', displayFormats: { month: 'MMM yy' } },
-          ticks: { font: { size: 11 }, color: '#4c778b' },
-          grid: { color: 'rgba(76,119,139,0.15)' },
-          title: { display: true, text: 'Close date', font: { size: 11 }, color: '#4c778b' }
-        },
-        y: {
-          ticks: { font: { size: 11 }, color: '#4c778b' },
-          grid: { color: 'rgba(76,119,139,0.15)' },
-          title: { display: true, text: 'Cycle time (days)', font: { size: 11 }, color: '#4c778b' }
-        }
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:true},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:ctx => ctx.dataset.borderDash ? ctx.dataset.label : `ID ${ctx.raw.id} — ${ctx.raw.y} days (${ctx.raw.x})`
+      }}},
+      scales:{
+        x:{type:'time',time:{unit:'month',displayFormats:{month:'MMM yy'}},ticks:{font:{size:11},color:'#4c778b'},grid:{color:'rgba(76,119,139,0.15)'},title:{display:true,text:'Close date',font:{size:11},color:'#4c778b'}},
+        y:{ticks:{font:{size:11},color:'#4c778b'},grid:{color:'rgba(76,119,139,0.15)'},title:{display:true,text:'Cycle time (days)',font:{size:11},color:'#4c778b'}}
       }
     }
   });
 
-  // Legend
   const legendItems = Object.entries(sprintGroups).sort((a,b)=>a[0].localeCompare(b[0])).map(([sp]) =>
     `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:12px;color:#4c778b;"><span style="width:10px;height:10px;border-radius:50%;background:${sprintColors[sp]||'#4c778b'};display:inline-block;"></span>${sp}</span>`
   ).join('');
@@ -553,41 +725,24 @@ function buildScatterplot() {
       <span style="display:flex;align-items:center;gap:5px;"><span style="width:20px;height:2px;border-top:2px dashed #ee7766;display:inline-block;"></span>95th pct ${p95}d</span>
     </div>`;
 
-  // Median per sprint bar chart
   const sprintMedians = {};
-  Object.entries(sprintGroups).forEach(([sp, pts]) => {
-    sprintMedians[sp] = median(pts.map(p => p.y));
-  });
+  Object.entries(sprintGroups).forEach(([sp,pts]) => sprintMedians[sp] = median(pts.map(p=>p.y)));
   const spKeys = Object.keys(sprintMedians).sort();
   new Chart(document.getElementById('medianChart'), {
-    type: 'bar',
-    data: { labels: spKeys, datasets: [{
-      label: 'Median cycle time (days)',
-      data: spKeys.map(k => sprintMedians[k]),
-      backgroundColor: spKeys.map(k => sprintColors[k] || '#4c778b'),
-      borderWidth: 0, borderRadius: 3
-    }]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `Median: ${ctx.parsed.y} days` } } },
-      scales: {
-        x: { ticks: { font: { size: 11 }, color: '#4c778b', autoSkip: false, maxRotation: 45 }, grid: { display: false } },
-        y: { ticks: { font: { size: 11 }, color: '#4c778b' }, grid: { color: 'rgba(76,119,139,0.2)' },
-             title: { display: true, text: 'Median (days)', font: { size: 10 }, color: '#4c778b' } }
-      }
-    }
+    type:'bar',
+    data:{labels:spKeys,datasets:[{label:'Median cycle time (days)',data:spKeys.map(k=>sprintMedians[k]),backgroundColor:spKeys.map(k=>sprintColors[k]||'#4c778b'),borderWidth:0,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`Median: ${ctx.parsed.y} days`}}},scales:{x:{ticks:{font:{size:11},color:'#4c778b',autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:11},color:'#4c778b'},grid:{color:'rgba(76,119,139,0.2)'},title:{display:true,text:'Median (days)',font:{size:10},color:'#4c778b'}}}}
   });
 
-  // Detail table
-  const sortedItems = [...csvItems].sort((a,b) => a.closed.localeCompare(b.closed));
+  const sortedItems = [...items].sort((a,b)=>a.date.localeCompare(b.date));
   const rows = sortedItems.map(d => {
-    const flag = d.ct > p95 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fde8e4;color:#c76f37;margin-left:4px;">outlier</span>` :
-                 d.ct > p85 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fef3dc;color:#c76f37;margin-left:4px;">&gt;85th</span>` : '';
-    const ctColor = d.ct > p95 ? '#c76f37' : d.ct > p85 ? '#c76f37' : '#003755';
+    const flag = d.ct>p95 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fde8e4;color:#c76f37;margin-left:4px;">outlier</span>` :
+                 d.ct>p85 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fef3dc;color:#c76f37;margin-left:4px;">&gt;85th</span>` : '';
+    const ctColor = d.ct>p95?'#c76f37':d.ct>p85?'#c76f37':'#003755';
     return `<tr>
       <td style="padding:5px 10px;font-size:12px;color:#4c778b;">${d.id}</td>
       <td style="padding:5px 10px;font-size:12px;color:#4c778b;">${d.sprint}</td>
-      <td style="padding:5px 10px;font-size:12px;color:#4c778b;">${new Date(d.closed).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td style="padding:5px 10px;font-size:12px;color:#4c778b;">${new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
       <td style="padding:5px 10px;font-size:13px;font-weight:500;color:${ctColor};">${d.ct}d${flag}</td>
     </tr>`;
   }).join('');
@@ -597,11 +752,227 @@ function buildScatterplot() {
       <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Sprint</th>
       <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Closed</th>
       <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Cycle time</th>
-    </tr></thead><tbody>${rows}</tbody>
-  </table>`;
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+buildScatterplot();
+
+// ═══ XmR tab ════════════════════════════════════════════════════════
+// Track excluded item IDs (Set of strings)
+let xmrExcludedIds = new Set();
+
+function buildXmR() {
+  const items = applyFilters().filter(d => !xmrExcludedIds.has(d.id)).sort((a,b) => a.date.localeCompare(b.date));
+  if (items.length < 2) {
+    document.getElementById('xmr-metrics').innerHTML = '<div class="metric" style="grid-column:1/-1;"><div class="label">Insufficient data</div><div class="value">—</div><div class="sub2">at least 2 items required after filters</div></div>';
+    document.getElementById('xmr-rules').innerHTML = '<div style="padding:10px;color:#c76f37;font-size:13px;">Adjust filters or include more items below to run the analysis.</div>';
+    renderXmrItemTable();
+    return;
+  }
+  const cts = items.map(d => d.ct);
+  const n = cts.length;
+
+  const CL = median(cts);
+  const mrs = []; for (let i=1;i<n;i++) mrs.push(Math.abs(cts[i]-cts[i-1]));
+  const avgMR = mrs.reduce((a,b)=>a+b,0)/mrs.length;
+
+  const MULT = 3.14;
+  const totalDist = MULT * avgMR;
+  const delta = totalDist / 3;
+  const UCL = CL + totalDist;
+  const LCL = Math.max(0, CL - totalDist);
+  const UCL_mR = 3.267 * avgMR;
+  const labels = items.map((d,i) => `#${i+1} ${d.id}`);
+
+  // Rule detection
+  const rules = [];
+  cts.forEach((ct, i) => {
+    const d = items[i];
+    if (ct > UCL || ct < LCL) rules.push({rule:1,idx:i,id:d.id,ct,date:d.date});
+    if (i >= 2) {
+      const w = cts.slice(i-2,i+1);
+      const aboveA = w.filter(v=>v>=CL+2*delta).length;
+      const belowA = w.filter(v=>v<=CL-2*delta).length;
+      if (aboveA>=2 || belowA>=2) rules.push({rule:2,idx:i,id:d.id,ct,date:d.date});
+    }
+    if (i >= 4) {
+      const w = cts.slice(i-4,i+1);
+      const inC_above = w.filter(v => v > CL && (v - CL) <= delta).length;
+      const inC_below = w.filter(v => v < CL && (CL - v) <= delta).length;
+      const inC_total = inC_above + inC_below + w.filter(v => v === CL).length;
+      // 3 of 5 in Zone C on the same side; not all 5 (avoid overlap with broader patterns)
+      if ((inC_above >= 3 || inC_below >= 3) && inC_total < 5) {
+        rules.push({rule:3,idx:i,id:d.id,ct,date:d.date,side:inC_above>=3?'above':'below'});
+      }
+    }
+    if (i >= 7) {
+      const w = cts.slice(i-7,i+1);
+      if (w.every(v=>v>CL)||w.every(v=>v<CL)) rules.push({rule:4,idx:i,id:d.id,ct,date:d.date});
+    }
+  });
+  const ruleSet = new Set();
+  const uniqueRules = rules.filter(r => { const k=`${r.rule}-${r.idx}`; if(ruleSet.has(k))return false; ruleSet.add(k); return true; });
+
+  function pointColor(ct) {
+    if (ct > UCL || ct < LCL) return '#ee7766';
+    if (Math.abs(ct-CL) >= 2*delta) return '#c76f37';
+    if (Math.abs(ct-CL) >= delta)   return '#fcca83';
+    return '#4dbdc6';
+  }
+  const ptColors = cts.map(ct => pointColor(ct));
+  const ruleIdx1 = new Set(uniqueRules.filter(r=>r.rule===1).map(r=>r.idx));
+
+  document.getElementById('xmr-metrics').innerHTML = `
+    <div class="metric"><div class="label">Centre line (median)</div><div class="value">${CL}</div><div class="sub2">days</div></div>
+    <div class="metric"><div class="label">UCL</div><div class="value">${UCL.toFixed(1)}</div><div class="sub2">upper control limit</div></div>
+    <div class="metric"><div class="label">Avg moving range</div><div class="value">${avgMR.toFixed(1)}</div><div class="sub2">day-to-day Δ</div></div>
+    <div class="metric"><div class="label">Zone width (Δ)</div><div class="value">${delta.toFixed(1)}</div><div class="sub2">1/3 of control dist.</div></div>
+    <div class="metric"><div class="label">Rule violations</div><div class="value">${uniqueRules.length}</div><div class="sub2">${uniqueRules.length===0?'process in control':'⚠ signals detected'}</div></div>
+  `;
+
+  document.getElementById('xmr-zone-legend').innerHTML = `
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:50%;background:#4dbdc6;display:inline-block;"></span>Zone C (${Math.max(0,CL-delta).toFixed(1)}–${(CL+delta).toFixed(1)}d) — natural variation</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:50%;background:#fcca83;display:inline-block;"></span>Zone B (${(CL+delta).toFixed(1)}–${(CL+2*delta).toFixed(1)}d)</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:50%;background:#c76f37;display:inline-block;"></span>Zone A (${(CL+2*delta).toFixed(1)}–${UCL.toFixed(1)}d)</span>
+    <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:50%;background:#ee7766;display:inline-block;"></span>Beyond limits (&gt;${UCL.toFixed(1)}d) — signal</span>
+  `;
+
+  new Chart(document.getElementById('xChart'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Zone A fill',data:Array(n).fill(UCL),borderWidth:0,backgroundColor:'rgba(199,111,55,0.08)',fill:'+1',pointRadius:0,tension:0},
+      {label:'UCL',data:Array(n).fill(UCL),borderColor:'#ee7766',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:0,fill:false},
+      {label:'ZoneB top',data:Array(n).fill(CL+2*delta),borderWidth:0,backgroundColor:'rgba(252,202,131,0.12)',fill:'+1',pointRadius:0,tension:0},
+      {label:'ZoneB line',data:Array(n).fill(CL+2*delta),borderColor:'#c76f37',borderWidth:1,borderDash:[3,4],pointRadius:0,tension:0,fill:false},
+      {label:'ZoneC top',data:Array(n).fill(CL+delta),borderWidth:0,backgroundColor:'rgba(77,189,198,0.10)',fill:'+1',pointRadius:0,tension:0},
+      {label:'ZoneC line',data:Array(n).fill(CL+delta),borderColor:'#4dbdc6',borderWidth:1,borderDash:[2,4],pointRadius:0,tension:0,fill:false},
+      {label:'CL',data:Array(n).fill(CL),borderColor:'#005f85',borderWidth:2,pointRadius:0,tension:0,fill:false},
+      {label:'ZoneC bot',data:Array(n).fill(Math.max(0,CL-delta)),borderColor:'#4dbdc6',borderWidth:1,borderDash:[2,4],pointRadius:0,tension:0,fill:false},
+      {label:'ZoneB bot',data:Array(n).fill(Math.max(0,CL-2*delta)),borderColor:'#c76f37',borderWidth:1,borderDash:[3,4],pointRadius:0,tension:0,fill:false},
+      {label:'LCL',data:Array(n).fill(LCL),borderColor:'#ee7766',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:0,fill:false},
+      {label:'Cycle time',data:cts,borderColor:'#003755',borderWidth:1.5,tension:0.1,fill:false,
+        pointBackgroundColor:ptColors,
+        pointBorderColor:cts.map((ct,i)=>ruleIdx1.has(i)?'#ee7766':'#003755'),
+        pointBorderWidth:cts.map((ct,i)=>ruleIdx1.has(i)?3:1),
+        pointRadius:6,pointHoverRadius:8}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{
+        filter:ctx=>ctx.datasetIndex===10,
+        callbacks:{
+          title:ctx=>{const i=ctx[0].dataIndex; return `#${i+1} — ID ${items[i].id} (${items[i].sprint})`;},
+          label:ctx=>{const ct=ctx.parsed.y; const zone=ct>UCL||ct<LCL?'Beyond limits':Math.abs(ct-CL)>=2*delta?'Zone A':Math.abs(ct-CL)>=delta?'Zone B':'Zone C'; return [`Cycle time: ${ct} days`,`Zone: ${zone}`,`CL: ${CL}d  UCL: ${UCL.toFixed(1)}d  LCL: ${LCL.toFixed(1)}d`];}
+        }
+      }},
+      scales:{x:{ticks:{font:{size:10},maxRotation:60,color:'#4c778b',autoSkip:false},grid:{display:false}},
+        y:{min:0,ticks:{font:{size:11},color:'#4c778b'},grid:{color:'rgba(76,119,139,0.15)'},title:{display:true,text:'Cycle time (days)',font:{size:11},color:'#4c778b'}}}
+    }
+  });
+
+  const mrColors = mrs.map(v => v > UCL_mR ? '#ee7766' : '#4dbdc6');
+  new Chart(document.getElementById('mrChart'), {
+    type:'bar',
+    data:{labels:labels.slice(1),datasets:[
+      {label:'Moving Range',data:mrs,backgroundColor:mrColors,borderWidth:0,borderRadius:3,order:2},
+      {label:`UCL_mR (${UCL_mR.toFixed(1)})`,data:Array(n-1).fill(UCL_mR),type:'line',borderColor:'#ee7766',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:0,fill:false,order:1},
+      {label:`Avg MR (${avgMR.toFixed(1)})`,data:Array(n-1).fill(avgMR),type:'line',borderColor:'#005f85',borderWidth:1.5,borderDash:[2,4],pointRadius:0,tension:0,fill:false,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:ctx=>`After item #${+ctx[0].label.split(' ')[0].replace('#','')}`,
+        label:ctx=>ctx.datasetIndex===0?`mR = ${ctx.parsed.y} days`:ctx.dataset.label
+      }}},
+      scales:{x:{ticks:{font:{size:10},maxRotation:60,color:'#4c778b',autoSkip:false},grid:{display:false}},
+        y:{min:0,ticks:{font:{size:11},color:'#4c778b'},grid:{color:'rgba(76,119,139,0.15)'},title:{display:true,text:'Moving range (days)',font:{size:11},color:'#4c778b'}}}
+    }
+  });
+
+  // All four Western Electric rules — always rendered, highlighted only when triggered
+  const ALL_RULES = [
+    {n:1, title:'Rule 1 — Beyond control limits', detail:'A single point outside UCL/LCL. Critical anomaly — forecasts invalid, model reset required.', activeColor:'#ee7766', activeBg:'#fde8e4'},
+    {n:2, title:'Rule 2 — 2 of 3 in Zone A', detail:'Two of three consecutive points in Zone A or beyond (same side). Signals a sharp increase in risk.', activeColor:'#c76f37', activeBg:'#fef3dc'},
+    {n:3, title:'Rule 3 — 3 of 5 in Zone C, same side', detail:'Three of five consecutive points in Zone C on the same side of the median. A moderate persistent signal — the process is consistently leaning toward one side, indicating a small but stable shift in baseline behaviour.', activeColor:'#fcca83', activeBg:'#fef3dc'},
+    {n:4, title:'Rule 4 — 8 points same side', detail:'Eight consecutive points on the same side of the median. Baseline has shifted — recalculate CL.', activeColor:'#ee7766', activeBg:'#fde8e4'},
+  ];
+
+  const grouped = {};
+  uniqueRules.forEach(r => { if(!grouped[r.rule]) grouped[r.rule]=[]; grouped[r.rule].push(r); });
+
+  const rulesHtml = ALL_RULES.map(r => {
+    const violations = grouped[r.n] || [];
+    const isTriggered = violations.length > 0;
+    const color = isTriggered ? r.activeColor : '#a8bfc7';
+    const bg = isTriggered ? r.activeBg : '#f5f7f8';
+    const titleColor = isTriggered ? r.activeColor : '#4c778b';
+    const detailColor = isTriggered ? '#4c778b' : '#6e8269';
+    const icon = isTriggered
+      ? '<i class="ti ti-alert-triangle-filled" style="font-size:14px;vertical-align:-2px;margin-right:5px;color:'+r.activeColor+';"></i>'
+      : '<i class="ti ti-circle-check" style="font-size:14px;vertical-align:-2px;margin-right:5px;color:#6e8269;"></i>';
+    const status = isTriggered
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:${r.activeColor};color:#fff;font-weight:500;margin-left:6px;">${violations.length} signal${violations.length===1?'':'s'}</span>`
+      : '<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:#c8d8de;color:#4c778b;font-weight:500;margin-left:6px;">no signals</span>';
+    const items_html = violations.length
+      ? '<div style="margin-top:8px;">' + violations.map(v =>
+          `<div style="font-size:11px;padding:3px 8px;background:#fff;border:0.5px solid ${r.activeColor};border-radius:5px;display:inline-block;margin:2px;">#${v.idx+1} ID ${v.id} — ct=${v.ct}d (${v.date})</div>`
+        ).join('') + '</div>'
+      : '';
+    return `<div style="margin-bottom:10px;padding:10px 14px;border-left:3px solid ${color};border-radius:0 8px 8px 0;background:${bg};">
+      <div style="font-size:13px;font-weight:500;color:${titleColor};margin-bottom:3px;">${icon}${r.title}${status}</div>
+      <div style="font-size:12px;color:${detailColor};">${r.detail}</div>
+      ${items_html}
+    </div>`;
+  }).join('');
+  document.getElementById('xmr-rules').innerHTML = rulesHtml;
+
+  // Render include/exclude table
+  renderXmrItemTable();
 }
 
-buildScatterplot();
+function renderXmrItemTable() {
+  const all = [...SOURCE.items].sort((a,b) => a.date.localeCompare(b.date));
+  const filteredIds = new Set(applyFilters().map(d => d.id));
+  const rows = all.map((d, i) => {
+    const filteredOut = !filteredIds.has(d.id);
+    const excluded = xmrExcludedIds.has(d.id) || filteredOut;
+    return `<tr style="${excluded?'opacity:0.45;':''}">
+      <td style="padding:4px 10px;font-size:12px;color:#4c778b;">#${i+1}</td>
+      <td style="padding:4px 10px;font-size:12px;color:#4c778b;">${d.id}</td>
+      <td style="padding:4px 10px;font-size:12px;color:#4c778b;">${d.sprint}</td>
+      <td style="padding:4px 10px;font-size:12px;color:#4c778b;">${new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td style="padding:4px 10px;font-size:13px;font-weight:500;color:#003755;">${d.ct}d</td>
+      <td style="padding:4px 10px;text-align:center;">
+        ${filteredOut
+          ? '<span style="font-size:11px;color:#a8bfc7;font-style:italic;">filtered out</span>'
+          : `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:${xmrExcludedIds.has(d.id)?'#c76f37':'#316c59'};">
+              <input type="checkbox" data-xmr-id="${d.id}" ${xmrExcludedIds.has(d.id)?'':'checked'} style="accent-color:#005f85;cursor:pointer;">
+              ${xmrExcludedIds.has(d.id)?'excluded':'included'}
+            </label>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('xmr-item-table').innerHTML = `<table style="width:100%;border-collapse:collapse;">
+    <thead><tr>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">#</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">ID</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Sprint</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Closed</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Cycle</th>
+      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:center;border-bottom:0.5px solid #a8bfc7;">In analysis</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+
+  document.querySelectorAll('#xmr-item-table input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const id = e.target.dataset.xmrId;
+      if (e.target.checked) xmrExcludedIds.delete(id);
+      else xmrExcludedIds.add(id);
+      // Destroy charts so they rebuild fresh
+      ['xChart','mrChart'].forEach(cid => { const c = Chart.getChart(cid); if(c) c.destroy(); });
+      buildXmR();
+    });
+  });
+}
+
+buildXmR();
 </script>
 </body>
 </html>
