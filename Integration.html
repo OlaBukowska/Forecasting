@@ -84,6 +84,12 @@
   .phrase { background: #eef5f7; border-radius: 8px; padding: 8px 12px; font-size: 12px; }
   .phrase .q { color: #4c778b; margin-bottom: 3px; }
   .phrase .a { color: #003755; font-weight: 500; }
+  /* Sortable tables */
+  th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 18px !important; }
+  th.sortable:hover { color: #003755 !important; }
+  th.sortable::after { content: '⇅'; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 9px; color: #a8bfc7; }
+  th.sortable.sort-asc::after  { content: '▲'; color: #005f85; font-size: 8px; }
+  th.sortable.sort-desc::after { content: '▼'; color: #005f85; font-size: 8px; }
   /* Filters */
   .filter-card { background: #eef5f7; border-radius: 8px; padding: 12px 16px; margin-bottom: 1rem; }
   .filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -521,6 +527,18 @@ function nextSprintName(pfx) {
 });
 
 // ═══ Shared filter state & helpers ══════════════════════════════════
+// Sort state per table
+const sortState = {
+  scatter: { col: 'date', dir: 'asc' },
+  xmr:     { col: 'idx',  dir: 'asc' },
+};
+
+function compareValues(a, b, col) {
+  let va = a[col], vb = b[col];
+  if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+  return String(va).localeCompare(String(vb));
+}
+
 // Single shared filter state across Scatterplot and XmR tabs
 const sharedFilter = { days: 0, iterations: 'all' };
 const filters = new Proxy({}, {
@@ -734,8 +752,17 @@ function buildScatterplot() {
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`Median: ${ctx.parsed.y} days`}}},scales:{x:{ticks:{font:{size:11},color:'#4c778b',autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{font:{size:11},color:'#4c778b'},grid:{color:'rgba(76,119,139,0.2)'},title:{display:true,text:'Median (days)',font:{size:10},color:'#4c778b'}}}}
   });
 
-  const sortedItems = [...items].sort((a,b)=>a.date.localeCompare(b.date));
-  const rows = sortedItems.map(d => {
+  renderScatterTable(items, p85, p95);
+}
+
+// Renders/refreshes the scatter item-detail table — supports sorting.
+function renderScatterTable(items, p85, p95) {
+  const { col, dir } = sortState.scatter;
+  const sorted = [...items].sort((a, b) => {
+    const cmp = compareValues(a, b, col);
+    return dir === 'asc' ? cmp : -cmp;
+  });
+  const rows = sorted.map(d => {
     const flag = d.ct>p95 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fde8e4;color:#c76f37;margin-left:4px;">outlier</span>` :
                  d.ct>p85 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#fef3dc;color:#c76f37;margin-left:4px;">&gt;85th</span>` : '';
     const ctColor = d.ct>p95?'#c76f37':d.ct>p85?'#c76f37':'#003755';
@@ -746,13 +773,18 @@ function buildScatterplot() {
       <td style="padding:5px 10px;font-size:13px;font-weight:500;color:${ctColor};">${d.ct}d${flag}</td>
     </tr>`;
   }).join('');
+  const hd = (key, label) => `<th class="sortable ${col===key?('sort-'+dir):''}" data-col="${key}" style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">${label}</th>`;
   document.getElementById('scatter-table').innerHTML = `<table style="width:100%;border-collapse:collapse;">
-    <thead><tr>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">ID</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Sprint</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Closed</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Cycle time</th>
-    </tr></thead><tbody>${rows}</tbody></table>`;
+    <thead><tr>${hd('id','ID')}${hd('sprint','Sprint')}${hd('date','Closed')}${hd('ct','Cycle time')}</tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  document.querySelectorAll('#scatter-table th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const newCol = th.dataset.col;
+      if (sortState.scatter.col === newCol) sortState.scatter.dir = sortState.scatter.dir === 'asc' ? 'desc' : 'asc';
+      else { sortState.scatter.col = newCol; sortState.scatter.dir = 'asc'; }
+      renderScatterTable(items, p85, p95);
+    });
+  });
 }
 buildScatterplot();
 
@@ -928,44 +960,64 @@ function buildXmR() {
 }
 
 function renderXmrItemTable() {
-  const all = [...SOURCE.items].sort((a,b) => a.date.localeCompare(b.date));
+  // Items in chronological order to define stable row numbers (#)
+  const chronological = [...SOURCE.items].sort((a,b) => a.date.localeCompare(b.date));
+  const idxByItemId = new Map(chronological.map((d,i) => [d.id, i+1]));
   const filteredIds = new Set(applyFilters().map(d => d.id));
-  const rows = all.map((d, i) => {
-    const filteredOut = !filteredIds.has(d.id);
-    const excluded = xmrExcludedIds.has(d.id) || filteredOut;
-    return `<tr style="${excluded?'opacity:0.45;':''}">
-      <td style="padding:4px 10px;font-size:12px;color:#4c778b;">#${i+1}</td>
+
+  const enriched = chronological.map(d => ({
+    ...d,
+    idx: idxByItemId.get(d.id),
+    filteredOut: !filteredIds.has(d.id),
+    excluded: xmrExcludedIds.has(d.id),
+    status: !filteredIds.has(d.id) ? 'filtered' : (xmrExcludedIds.has(d.id) ? 'excluded' : 'included'),
+  }));
+
+  const { col, dir } = sortState.xmr;
+  enriched.sort((a, b) => {
+    const cmp = compareValues(a, b, col);
+    return dir === 'asc' ? cmp : -cmp;
+  });
+
+  const rows = enriched.map(d => {
+    const dim = (d.filteredOut || d.excluded) ? 'opacity:0.45;' : '';
+    return `<tr style="${dim}">
+      <td style="padding:4px 10px;font-size:12px;color:#4c778b;">#${d.idx}</td>
       <td style="padding:4px 10px;font-size:12px;color:#4c778b;">${d.id}</td>
       <td style="padding:4px 10px;font-size:12px;color:#4c778b;">${d.sprint}</td>
       <td style="padding:4px 10px;font-size:12px;color:#4c778b;">${new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td>
       <td style="padding:4px 10px;font-size:13px;font-weight:500;color:#003755;">${d.ct}d</td>
       <td style="padding:4px 10px;text-align:center;">
-        ${filteredOut
+        ${d.filteredOut
           ? '<span style="font-size:11px;color:#a8bfc7;font-style:italic;">filtered out</span>'
-          : `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:${xmrExcludedIds.has(d.id)?'#c76f37':'#316c59'};">
-              <input type="checkbox" data-xmr-id="${d.id}" ${xmrExcludedIds.has(d.id)?'':'checked'} style="accent-color:#005f85;cursor:pointer;">
-              ${xmrExcludedIds.has(d.id)?'excluded':'included'}
+          : `<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:${d.excluded?'#c76f37':'#316c59'};">
+              <input type="checkbox" data-xmr-id="${d.id}" ${d.excluded?'':'checked'} style="accent-color:#005f85;cursor:pointer;">
+              ${d.excluded?'excluded':'included'}
             </label>`}
       </td>
     </tr>`;
   }).join('');
 
+  const hd = (key, label, align='left') => `<th class="sortable ${col===key?('sort-'+dir):''}" data-col="${key}" style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:${align};border-bottom:0.5px solid #a8bfc7;">${label}</th>`;
+
   document.getElementById('xmr-item-table').innerHTML = `<table style="width:100%;border-collapse:collapse;">
-    <thead><tr>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">#</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">ID</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Sprint</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Closed</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:left;border-bottom:0.5px solid #a8bfc7;">Cycle</th>
-      <th style="padding:5px 10px;font-size:11px;color:#4c778b;font-weight:400;text-align:center;border-bottom:0.5px solid #a8bfc7;">In analysis</th>
-    </tr></thead><tbody>${rows}</tbody></table>`;
+    <thead><tr>${hd('idx','#')}${hd('id','ID')}${hd('sprint','Sprint')}${hd('date','Closed')}${hd('ct','Cycle')}${hd('status','In analysis','center')}</tr></thead>
+    <tbody>${rows}</tbody></table>`;
+
+  document.querySelectorAll('#xmr-item-table th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const newCol = th.dataset.col;
+      if (sortState.xmr.col === newCol) sortState.xmr.dir = sortState.xmr.dir === 'asc' ? 'desc' : 'asc';
+      else { sortState.xmr.col = newCol; sortState.xmr.dir = 'asc'; }
+      renderXmrItemTable();
+    });
+  });
 
   document.querySelectorAll('#xmr-item-table input[type=checkbox]').forEach(cb => {
     cb.addEventListener('change', e => {
       const id = e.target.dataset.xmrId;
       if (e.target.checked) xmrExcludedIds.delete(id);
       else xmrExcludedIds.add(id);
-      // Destroy charts so they rebuild fresh
       ['xChart','mrChart'].forEach(cid => { const c = Chart.getChart(cid); if(c) c.destroy(); });
       buildXmR();
     });
