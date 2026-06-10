@@ -161,17 +161,6 @@
     <div id="main-phraseSuggestion"></div>
   </div>
   <div class="card">
-    <div class="card-title"><i class="ti ti-chart-histogram" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Completion distribution</div>
-    <div class="legend">
-      <span><span class="legend-dot" style="background:#ee7766"></span>up to 75%</span>
-      <span><span class="legend-dot" style="background:#c76f37"></span>75–85%</span>
-      <span><span class="legend-dot" style="background:#0b707d"></span>above 85%</span>
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:18px;height:2px;background:#005f85;display:inline-block;border-radius:1px;"></span>cumulative confidence</span>
-    </div>
-    <div style="position:relative;width:100%;height:220px;"><canvas id="main-histChart"></canvas></div>
-    <div id="main-confTable" style="margin-top:14px;overflow-x:auto;"></div>
-  </div>
-  <div class="card">
     <div class="card-title"><i class="ti ti-chart-bar" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>Historical throughput <span style="font-size:12px;font-weight:400;color:#4c778b;">(done items per sprint)</span></div>
     <div class="history-control">
       <label><i class="ti ti-history" style="font-size:14px;vertical-align:-2px;margin-right:4px"></i>Sprints included</label>
@@ -360,7 +349,7 @@ const tabs = {
       ...deriveThroughput(['2026.08','2026.09','2026.10','2026.11']),
       { sprint: '2026.12', val: 1 }
     ],
-    backlog: SOURCE.remainingBacklog, historyCount: 5, histChartInst: null, tpChartInst: null
+    backlog: SOURCE.remainingBacklog, historyCount: 5, tpChartInst: null
   }
 };
 
@@ -433,53 +422,6 @@ function runSimulation(pfx) {
       <div class="phrase"><div class="q">💬 Say to your team:</div><div class="a">"We have ${tsc} sprint${tsc===1?'':'s'} to ${tDate}. At 95% confidence, target ${tP95} backlog items."</div></div>
     </div>`;
   }
-
-  const sc = {}; simResults.forEach(s => { sc[s] = (sc[s]||0)+1; });
-  const sk = Object.keys(sc).map(Number).sort((a,b)=>a-b);
-  const hLabels = sk.map(s => sprintLabel(s));
-  const hData = sk.map(s => +((sc[s]||0)/N*100).toFixed(1));
-  const hColors = sk.map(s => s<=p75off?'#ee7766':s<=p85off?'#c76f37':'#0b707d');
-  let cumSum = 0;
-  const cumData = sk.map(s => { cumSum += ((sc[s]||0)/N*100); return +cumSum.toFixed(1); });
-
-  if (t.histChartInst) {
-    t.histChartInst.data.labels = hLabels;
-    t.histChartInst.data.datasets[0].data = hData;
-    t.histChartInst.data.datasets[0].backgroundColor = hColors;
-    t.histChartInst.data.datasets[1].data = cumData;
-    t.histChartInst.update();
-  } else {
-    t.histChartInst = new Chart(document.getElementById(pfx+'-histChart'), {
-      type:'bar', data:{labels:hLabels, datasets:[
-        {label:'% finishing this sprint',data:hData,backgroundColor:hColors,borderWidth:0,borderRadius:2,yAxisID:'y'},
-        {label:'Cumulative confidence',data:cumData,type:'line',borderColor:'#005f85',backgroundColor:'rgba(0,95,133,0.08)',borderWidth:2,pointBackgroundColor:'#005f85',pointRadius:3,pointHoverRadius:5,tension:0.3,fill:true,yAxisID:'y2'}
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-        plugins:{legend:{display:false},tooltip:{callbacks:{
-          title:items=>`Sprint ${items[0].label}`,
-          label:ctx=>ctx.datasetIndex===0?`${ctx.parsed.y.toFixed(1)}% finish here`:`${ctx.parsed.y.toFixed(0)}% cumulative`,
-          afterBody:items=>{const c=items.find(i=>i.datasetIndex===1)?.parsed.y;if(!c)return[];if(c>=99)return['✅ 99%+ — very safe'];if(c>=85)return['🟢 85%+ — safe commitment'];if(c>=75)return['🟡 75%+ — optimistic'];return['🔴 <75% — risky'];}
-        }}},
-        scales:{
-          x:{ticks:{font:{size:11},maxRotation:45,color:'#4c778b',autoSkip:false},grid:{display:false}},
-          y:{position:'left',ticks:{font:{size:11},color:'#4c778b',callback:v=>v+'%'},grid:{color:'rgba(76,119,139,0.2)'},title:{display:true,text:'% finishing this sprint',font:{size:10},color:'#4c778b'}},
-          y2:{position:'right',min:0,max:100,ticks:{font:{size:11},color:'#005f85',callback:v=>v+'%'},grid:{display:false},title:{display:true,text:'Cumulative confidence',font:{size:10},color:'#005f85'}}
-        }
-      }
-    });
-  }
-
-  const tableRows = sk.map((s,i)=>{
-    const conf=cumData[i];
-    const bg=conf>=85?'#b4dac3;color:#316c59':conf>=75?'#fef3dc;color:#c76f37':'#fde8e4;color:#c76f37';
-    return`<tr><td style="padding:4px 10px;font-size:12px;color:#4c778b;">${sprintLabel(s)}</td><td style="padding:4px 10px;font-size:12px;color:#003755;">${sprintEndDate(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</td><td style="padding:4px 10px;font-size:12px;color:#4c778b;">${hData[i].toFixed(1)}%</td><td style="padding:4px 8px;"><span style="display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:5px;background:${bg};">${conf.toFixed(0)}%</span></td></tr>`;
-  }).join('');
-  document.getElementById(pfx+'-confTable').innerHTML=`<table style="width:100%;border-collapse:collapse;"><thead><tr>
-    <th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Sprint</th>
-    <th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">End date</th>
-    <th style="padding:4px 10px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Simulations finishing here</th>
-    <th style="padding:4px 8px;font-size:11px;color:#4c778b;text-align:left;border-bottom:0.5px solid #a8bfc7;font-weight:400;">Cumulative confidence</th>
-  </tr><tbody>${tableRows}</tbody></table>`;
 
   updateTpChart(pfx);
 }
